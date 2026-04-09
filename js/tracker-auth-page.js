@@ -35,7 +35,7 @@ async function fetchCsrfToken() {
     .then(r => r.json())
     .then(data => {
       if (data && data.logged_in) {
-        window.location.replace('./expense-tracker.html');
+        window.location.replace('./expense-tracker');
       }
     })
     .catch(() => {});
@@ -140,12 +140,12 @@ authForm.onsubmit = async (e) => {
             const loginData = await loginRes.json();
             if (loginData.token) setAuthToken(loginData.token, loginData.username);
           } catch (_) {}
-          window.location.replace('./expense-tracker.html');
+          window.location.replace('./expense-tracker');
         }
       }, 1000);
     } else {
       if (data.token) setAuthToken(data.token, data.username);
-      window.location.replace('./expense-tracker.html');
+      window.location.replace('./expense-tracker');
     }
   } catch (err) {
     authError.textContent = err.message || 'Connection failed. Is the server running?';
