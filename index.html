@@ -27,7 +27,10 @@
                 </div>
                 <span>Xpense</span>
             </a>
-            <div class="nav-links">
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle Navigation">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
                 <a href="#features" class="nav-link">Features</a>
                 <a href="#how-it-works" class="nav-link">How it Works</a>
                 <a href="user-manual" class="nav-link">Manual</a>
@@ -202,6 +205,28 @@
                 navbar.classList.remove('scrolled');
             }
         });
+        
+        // Mobile Nav Toggle
+        const navToggle = document.getElementById('navToggle');
+        const navLinks = document.getElementById('navLinks');
+        
+        if (navToggle && navLinks) {
+            navToggle.addEventListener('click', () => {
+                navToggle.classList.toggle('is-active');
+                navLinks.classList.toggle('is-open');
+                document.body.style.overflow = navLinks.classList.contains('is-open') ? 'hidden' : '';
+            });
+            
+            // Close menu when clicking links
+            const links = navLinks.querySelectorAll('.nav-link, .btn');
+            links.forEach(link => {
+                link.addEventListener('click', () => {
+                    navToggle.classList.remove('is-active');
+                    navLinks.classList.remove('is-open');
+                    document.body.style.overflow = '';
+                });
+            });
+        }
 
         // Scroll reveal animation
         const revealElements = document.querySelectorAll('[data-reveal]');

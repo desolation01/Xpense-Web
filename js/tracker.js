@@ -741,11 +741,11 @@ function main() {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#aaa" } },
-          y: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#aaa", callback: value => "₱" + value.toLocaleString() } }
+          x: { grid: { color: "rgba(0,0,0,0.05)" }, ticks: { color: "#4B5563" } },
+          y: { grid: { color: "rgba(0,0,0,0.05)" }, ticks: { color: "#4B5563", callback: value => "₱" + value.toLocaleString() } }
         },
         plugins: {
-          legend: { position: "top", labels: { color: "#fff" } },
+          legend: { position: "top", labels: { color: "#111827" } },
           tooltip: {
             callbacks: {
               label: (context) => ` ${context.dataset.label}: ${fmtMoney(context.parsed.y)}`
@@ -1405,40 +1405,47 @@ function main() {
   });
 
   resetBtn.addEventListener("click", async () => {
-    if (!confirm("Are you sure you want to reset everything? This will delete all local and cloud data.")) return;
+    if (!confirm("⚠️ Are you sure? This will PERMANENTLY delete all your local and cloud data.")) return;
     
-    // 1. Wipe local storage
-    localStorage.removeItem(STORAGE_SALARY);
-    localStorage.removeItem(STORAGE_BUDGET);
-    localStorage.removeItem(STORAGE_ENTRIES);
-    localStorage.removeItem("tracker_sync_key");
-    
-    // 2. Wipe cloud (optional but necessary to prevent auto-restore)
-    try {
-      const token = await fetchCsrfToken();
-      const key = getSyncKey();
-      await fetch(`/api/api?action=sync${key ? `&key=${encodeURIComponent(key)}` : ''}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": token,
-          ...getAuthHeaders()
-        },
-        body: JSON.stringify({ entriesByDay: {}, salary: null, budget: null })
-      });
-    } catch(e) {
-      console.log("Cloud reset failed or server offline.");
-    }
-
-    // 3. Reset internal state and refresh UI
+    // 1. Wipe Internal state
     entriesByDay = {};
     salary = null;
     budget = null;
-    saveEntries(entriesByDay);
+
+    // 2. Wipe Local Storage
+    localStorage.removeItem(STORAGE_SALARY);
+    localStorage.removeItem(STORAGE_BUDGET);
+    localStorage.removeItem(STORAGE_ENTRIES);
+    localStorage.removeItem(STORAGE_WEEKLY_BUDGET);
+    localStorage.removeItem("tracker_sync_key");
+    
+    // Clear in-memory storage too if used
     saveSalary(null);
     saveBudget(null);
-    
-    // Force a page reload to go back to setup screen
+    saveEntries({});
+
+    // 3. Wipe Cloud Database
+    try {
+      const token = await fetchCsrfToken();
+      const authHeaders = getAuthHeaders();
+      
+      if (Object.keys(authHeaders).length > 0) {
+        await fetch("/api/api?action=sync", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": token,
+            ...authHeaders
+          },
+          body: JSON.stringify({ entriesByDay: {}, salary: null, budget: null })
+        });
+      }
+    } catch(e) {
+      console.error("Cloud reset failed:", e);
+    }
+
+    // 4. Force Redirect/Reload
+    alert("Project reset successful.");
     window.location.reload();
   });
 
@@ -1812,6 +1819,73 @@ function main() {
       return parts.join("\n").slice(0, 8000); // Guard rails
     }
 
+    function processChatCommands(text) {
+      const addRegex = /\[\[ADD:\s*([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\]\]/g;
+      const delRegex = /\[\[DELETE:\s*([^|]+)\|([^|]+)\]\]/g;
+      const updRegex = /\[\[UPDATE:\s*([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\]\]/g;
+
+      let match;
+      let changed = false;
+
+      // Process ADD
+      while ((match = addRegex.exec(text)) !== null) {
+        const [_, date, label, amount, cat, type] = match;
+        if (!entriesByDay[date]) entriesByDay[date] = [];
+        entriesByDay[date].push({
+          label: label.trim(),
+          amount: parseFloat(amount) || 0,
+          category: cat.trim(),
+          type: type.trim().toLowerCase() === "gain" ? "gain" : "expense",
+          ts: Date.now()
+        });
+        changed = true;
+      }
+
+      // Process DELETE
+      while ((match = delRegex.exec(text)) !== null) {
+        const [_, date, label] = match;
+        if (entriesByDay[date]) {
+          const l = label.trim().toLowerCase();
+          const initialLen = entriesByDay[date].length;
+          entriesByDay[date] = entriesByDay[date].filter(it => it.label.toLowerCase() !== l);
+          if (entriesByDay[date].length === 0) delete entriesByDay[date];
+          if (initialLen !== (entriesByDay[date]?.length || 0)) changed = true;
+        }
+      }
+
+      // Process UPDATE
+      while ((match = updRegex.exec(text)) !== null) {
+        const [_, date, oldLabel, newLabel, newAmt, newCat] = match;
+        if (entriesByDay[date]) {
+          const ol = oldLabel.trim().toLowerCase();
+          entriesByDay[date] = entriesByDay[date].map(it => {
+            if (it.label.toLowerCase() === ol) {
+              changed = true;
+              return {
+                ...it,
+                label: newLabel.trim() || it.label,
+                amount: parseFloat(newAmt) || it.amount,
+                category: newCat.trim() || it.category,
+                ts: Date.now()
+              };
+            }
+            return it;
+          });
+        }
+      }
+
+      if (changed) {
+        saveAndRefresh();
+        // If the entries modal is open for the changed date, refresh it
+        if (typeof activeDateIso !== "undefined" && entriesByDay[activeDateIso]) {
+           renderEntriesModal(activeDateIso);
+        }
+      }
+      
+      // Return cleaned text (remove commands before showing to user)
+      return text.replace(/\[\[.*?\]\]/g, "").trim();
+    }
+
     const systemPrompt = {
       role: "system",
       content: "You are the official Financial Assistant for the Xpense platform. " +
@@ -1821,6 +1895,12 @@ function main() {
                "The currency is Philippine Peso (₱). Use the provided spending data to answer user questions. Be precise with calculations. " +
                "ALWAYS use the ₱ symbol when mentioning money. If they ask about spending, sum up the relevant categories/dates from the log. " +
                "If they are over budget, give friendly advice. Keep responses concise and use bold for numbers.\n\n" +
+               "NEW CAPABILITY: You can now modify the user's data! " +
+               "To take an action, append ONE of these commands at the VERY END of your response (it will be parsed internally):\n" +
+               "1. Add: [[ADD: YYYY-MM-DD|label|amount|category|type]]\n" +
+               "   - type: 'expense' or 'gain'.\n" +
+               "2. Delete: [[DELETE: YYYY-MM-DD|label]]\n" +
+               "3. Update: [[UPDATE: YYYY-MM-DD|old_label|new_label|new_amount|new_category]]\n\n" +
                "USER FINANCIAL DATA:\n" + buildFinancialContext()
     };
     messages.push(systemPrompt);
@@ -1867,7 +1947,9 @@ function main() {
 
       try {
         // Refresh context in system prompt with latest data before sending
-        messages[0].content = "You are the official Financial Assistant for Xpense. You ONLY discuss Xpense features and finance. USER FINANCIAL DATA:\n" + buildFinancialContext();
+        messages[0].content = "You are the official Financial Assistant for Xpense. You ONLY discuss Xpense features and finance. " +
+                              "You can modify data using: [[ADD: YYYY-MM-DD|label|amount|category|type]], [[DELETE: YYYY-MM-DD|label]], or [[UPDATE: YYYY-MM-DD|old_label|new_label|new_amount|new_category]]. " +
+                              "USER FINANCIAL DATA:\n" + buildFinancialContext();
 
         const token = await fetchCsrfToken();
         const r = await fetch("/api/api?action=chat", {
@@ -1880,7 +1962,8 @@ function main() {
           body: JSON.stringify({ model: "openai/gpt-oss-120b", messages })
         });
         const data = await r.json();
-        addMessage("assistant", data.content || "Sorry, I couldn't process that.");
+        const cleanedText = processChatCommands(data.content || "Sorry, I couldn't process that.");
+        addMessage("assistant", cleanedText);
       } catch (err) {
         addMessage("assistant", "Connection error. Ensure the server is running.");
       } finally {

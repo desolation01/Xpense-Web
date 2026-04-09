@@ -1,5 +1,5 @@
 /* ============================================
-   EXPENSE TRACKER STYLES — C2 Hero Banner
+   EXPENSE TRACKER STYLES �?C2 Hero Banner
    Dark OLED · Developer Palette
    ============================================ */
 
@@ -14,6 +14,91 @@
   --sp-8: 2rem;
   --sp-10: 2.5rem;
   --sp-12: 3rem;
+
+  /* Landing Page Theme Overrides for Dashboard Nav */
+  --lp-primary: #6d5acd;
+  --lp-primary-2: #8b7adf;
+  --lp-muted: #94a3b8;
+  --lp-font: 'Outfit', sans-serif;
+}
+
+/* ── Tracker Nav Override ──
+   The main styles.css hides .site-nav below 64rem.
+   The tracker page uses its own nav toggle, so we show
+   the secondary nav on �?860px and hide it below that
+   (the JS toggle adds .is-open to reveal it on mobile). */
+@media (min-width: 860px) {
+  .site-nav[aria-label="Secondary"] {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 859px) {
+  .site-nav[aria-label="Secondary"] {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    height: 100vh !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: var(--color-background) !important; /* theme-aware background to match landing */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: var(--z-overlay);
+    gap: 3.5rem !important; /* Large, clean gaps */
+    overflow-y: auto;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  .site-nav[aria-label="Secondary"].is-open {
+    display: flex;
+  }
+
+  .site-nav[aria-label="Secondary"] .btn {
+    font-size: 1.35rem !important;
+    padding: 1rem 3rem !important;
+    width: auto !important;
+    min-width: 280px;
+    border-radius: 12px !important;
+    justify-content: center;
+  }
+
+  /* Sync Controls Stacking */
+  .tracker-sync-controls {
+    flex-direction: column !important;
+    gap: 2.5rem !important;
+    width: 100% !important;
+    align-items: center !important;
+  }
+  
+  #userStatus {
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+  }
+
+  #usernameDisplay {
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+  }
+}
+
+
+/* ── Nav Toggle Overlay FIX ── */
+.nav-toggle {
+  position: relative;
+  z-index: calc(var(--z-overlay) + 20);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  width: 44px;
+  height: 44px;
 }
 
 /* ── Main Layout ── */
@@ -21,6 +106,72 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
+  font-family: var(--lp-font), sans-serif;
+}
+
+/* ── Dashboard Navbar Refinement (Desktop) ── */
+@media (min-width: 860px) {
+  .site-nav[aria-label="Secondary"] {
+    background: rgba(12, 15, 26, 0.4) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 12px !important;
+    font-family: var(--lp-font);
+  }
+
+  .site-nav[aria-label="Secondary"] .btn {
+    font-family: var(--lp-font);
+    font-weight: 600;
+    border-radius: 8px !important;
+    transition: all 0.2s ease;
+    padding: 0.6rem 1.2rem !important;
+    border: none !important;
+  }
+
+  /* Reset Button -> Outline Style */
+  #resetTrackerBtn {
+    background: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+  }
+
+  #resetTrackerBtn:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: var(--lp-primary) !important;
+  }
+
+  /* Back Link -> Primary Style */
+  .site-nav .header-back-btn {
+    background: linear-gradient(135deg, var(--lp-primary), var(--lp-primary-2)) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(109, 90, 205, 0.2);
+  }
+
+  .site-nav .header-back-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(109, 90, 205, 0.3);
+  }
+
+  /* Logout Button -> Subtle Link Style */
+  #logoutBtn {
+    color: var(--lp-muted) !important;
+    background: transparent !important;
+    padding: 0.6rem 1rem !important;
+  }
+
+  #logoutBtn:hover {
+    color: #fff !important;
+  }
+
+  /* Username Display */
+  #usernameDisplay {
+    font-family: var(--lp-font);
+    color: #fff !important;
+    opacity: 0.8;
+    margin-right: 0.5rem;
+  }
 }
 
 /* ── Weekly Totals Card ── */
@@ -417,29 +568,6 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   font-size: var(--text-sm);
-}
-
-@media (max-width: 640px) {
-  .tracker-balance {
-    padding: var(--sp-2) var(--sp-3);
-    min-width: 110px;
-  }
-
-  .tracker-balance-k {
-    font-size: 0.625rem;
-  }
-
-  .tracker-balance-v {
-    font-size: var(--text-xs);
-  }
-
-  .header-actions {
-    gap: var(--sp-2);
-  }
-
-  .brand-text {
-    display: none;
-  }
 }
 
 .tracker-balance-v.is-negative {
@@ -1295,15 +1423,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 44px;
+  height: 48px;
   padding: 0 var(--sp-5);
   border-radius: var(--radius-full);
   background: var(--color-primary);
-  color: var(--color-primary-foreground);
+  color: #ffffff !important;
   box-shadow: var(--shadow-md);
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--text-sm);
+  gap: 0.5rem;
   transition: all var(--duration-normal) var(--ease-standard);
+  border: none;
+  cursor: pointer;
 }
 
 .chatbot-fab:hover {
@@ -1509,64 +1640,7 @@
   }
 }
 
-/* ── Responsive ── */
-@media (max-width: 640px) {
-  .final-summary-card {
-    padding: var(--sp-5);
-  }
-
-  .summary-content {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .summary-right {
-    align-items: flex-start;
-    width: 100%;
-  }
-
-  .summary-val {
-    font-size: clamp(2rem, 12vw, 3rem);
-  }
-
-  .summary-badge-container {
-    justify-content: flex-start;
-  }
-
-  .ai-analysis-btn {
-    padding: var(--sp-3) var(--sp-4);
-    width: 100%;
-    justify-content: center;
-  }
-
-  .tracker-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .search-box {
-    width: 100%;
-  }
-
-  .action-btns {
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .section-header-actions {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--sp-4);
-  }
-
-  .tracker-day {
-    min-height: 60px;
-  }
-
-  .tracker-day-top {
-    font-size: var(--text-sm);
-  }
-}
+/* End of summary section */
 
 /* ══════════════════════════════════════════════
    C2 HERO BANNER LAYOUT
@@ -1737,11 +1811,28 @@
 
 .tracker-mini-stat:hover {
   border-color: var(--color-border-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.tracker-mini-stat--green {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.03) 100%) !important;
+  border-color: rgba(34, 197, 94, 0.2) !important;
+}
+
+.tracker-mini-stat--blue {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.03) 100%) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+.tracker-mini-stat--red {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.03) 100%) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
 }
 
 .tracker-mini-icon {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -1800,7 +1891,7 @@
   }
 }
 
-/* ── Left Column (Calendar → Chart → Summary) ── */
+/* ── Left Column (Calendar �?Chart �?Summary) ── */
 .tracker-left-col {
   display: flex;
   flex-direction: column;
@@ -1814,8 +1905,114 @@
   gap: var(--sp-4);
 }
 
-/* ── Responsive: mobile ── */
+/* ══════════════════════════════════════════════�?   RESPONSIVE �?Mobile-first overrides
+   Breakpoints: 960 · 768 · 640 · 480 · 360
+   ══════════════════════════════════════════════�?*/
+
+/* ── Hero Row Wrapper ── */
+.tracker-hero-row {
+  display: flex;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+  align-items: stretch;
+  width: 100%;
+}
+
+/* ── Side Cards (Contact + Manual) ── */
+.tracker-side-cards {
+  flex: 1;
+  display: flex;
+  gap: var(--sp-4);
+  align-items: stretch;
+  min-width: 0;
+}
+
+/* ════════════ �?960px ════════════ */
+@media (max-width: 960px) {
+  .tracker-hero {
+    width: 100%;
+  }
+
+  .tracker-hero-row {
+    flex-direction: row; /* Keep side-by-side as requested */
+    flex-wrap: wrap; /* Allow wrapping if too narrow */
+  }
+
+  /* Reorder Summary to bottom on mobile */
+  .tracker-body {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .tracker-left-col,
+  .tracker-right-panel {
+    display: contents; /* Promote children cards to be grid items of .tracker-body */
+  }
+
+  /* Specific Mobile Order */
+  #calendarCard { order: 10; }
+  #chartCard { order: 20; }
+  #recentTransactionsCard { order: 30; }
+  #weeklyCard { order: 40; }
+  #finalSummaryCard { order: 50; }
+
+  .tracker-side-cards {
+    flex-direction: row;
+  }
+}
+
+/* ════════════ �?768px ════════════ */
+@media (max-width: 768px) {
+  /* Mini stats �?2 columns */
+  .tracker-mini-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Calendar day cells shorter */
+  .tracker-day {
+    min-height: 72px;
+    padding: var(--sp-1);
+  }
+
+  .tracker-day-top {
+    font-size: var(--text-base);
+  }
+
+  .tracker-day-bottom {
+    font-size: 0.75rem;
+  }
+
+  /* Weekday abbrev stays readable */
+  .tracker-weekdays {
+    font-size: 0.55rem;
+    gap: var(--sp-1);
+    letter-spacing: 0.04em;
+  }
+
+  .tracker-days {
+    gap: var(--sp-1);
+  }
+
+  /* Hero amount slightly smaller */
+  .tracker-hero-amount {
+    font-size: 2rem;
+  }
+
+  /* Entry form rows �?single column */
+  .tracker-entry-row {
+    grid-template-columns: 1fr;
+  }
+
+  /* Modal panel  */
+  .tracker-modal-panel {
+    width: min(96vw, 480px);
+    max-height: 90vh;
+  }
+}
+
+/* ════════════ �?640px ════════════ */
 @media (max-width: 640px) {
+  /* Hero banner: stack vertically */
   .tracker-hero {
     flex-direction: column;
     align-items: flex-start;
@@ -1824,29 +2021,194 @@
   }
 
   .tracker-hero-right {
+    flex-direction: row;
     flex-wrap: wrap;
-    gap: var(--sp-4);
+    gap: var(--sp-3);
     width: 100%;
-  }
-
-  .tracker-hero-stat {
-    text-align: left;
-  }
-
-  .tracker-hero-divider {
-    display: none;
+    justify-content: flex-start;
   }
 
   .tracker-hero-bar-wrap {
     width: 100%;
   }
 
+  .tracker-hero-amount {
+    font-size: 1.75rem;
+  }
+
+  /* Branding & Balance */
+  .brand-text {
+    display: inline-block;
+    font-size: 1.1rem;
+    font-weight: 800;
+  }
+
+  .header-actions {
+    gap: var(--sp-2);
+  }
+
+  .tracker-balance {
+    padding: var(--sp-2) var(--sp-3);
+    min-width: 110px;
+  }
+
+  .tracker-balance-k {
+    font-size: 0.625rem;
+  }
+
+  .tracker-balance-v {
+    font-size: var(--text-xs);
+  }
+
+  /* Side cards �?stack */
+  .tracker-side-cards {
+    flex-direction: column;
+  }
+
+  /* Mini stats -> horizontal layout (3 columns) */
   .tracker-mini-stats {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: var(--sp-2) !important;
+  }
+
+  /* Controls  */
+  .tracker-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box {
+    width: 100%;
+  }
+
+  .action-btns {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* Calendar */
+  .tracker-day {
+    min-height: 56px;
+    padding: var(--sp-1);
+  }
+
+  .tracker-day-top {
+    font-size: var(--text-sm);
+    margin-bottom: 0;
+  }
+
+  .tracker-day-bottom {
+    font-size: 0.65rem;
+  }
+
+  .tracker-weekdays {
+    font-size: 0.5rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* Calendar header: stack month picker below title */
+  .tracker-calendar-head {
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+
+  .tracker-calendar-actions {
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: flex-start;
+    gap: var(--sp-1);
+  }
+
+  /* Chart */
+  .chart-container {
+    height: 220px;
+  }
+
+  /* Final summary */
+  .final-summary-card {
+    padding: var(--sp-5);
+  }
+
+  .summary-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .summary-right {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .summary-val {
+    font-size: clamp(2rem, 12vw, 3rem);
+  }
+
+  .summary-badge-container {
+    justify-content: flex-start;
+  }
+
+  /* Section header */
+  .section-header-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-4);
+  }
+
+  /* Entry form: single column always */
+  .tracker-entry-row {
     grid-template-columns: 1fr;
+  }
+
+  /* Modal full-width on small screens */
+  .tracker-modal-panel {
+    width: calc(100% - 1rem);
+    max-height: 92vh;
+    border-radius: var(--radius-md);
+  }
+
+  /* Salary setup card */
+  .tracker-setup {
+    padding: var(--sp-5);
+  }
+
+  /* Restore Chatbot FAB text/pill style on mobile */
+  .chatbot {
+    right: 1rem !important;
+    bottom: 1rem !important;
+  }
+  
+  .chatbot-fab {
+    width: auto !important;
+    min-width: 140px !important;
+    height: 48px !important;
+    padding: 0 1.25rem !important;
+    border-radius: var(--radius-full) !important;
+    font-size: 0.9rem !important;
+    display: flex !important;
+    gap: 0.5rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+  }
+
+  .chatbot-fab .fab-text {
+    display: inline !important; /* Show text again */
+  }
+
+  /* Chatbot panel full-width on mobile */
+  .chatbot-panel {
+    position: fixed !important;
+    right: 1rem !important;
+    left: 1rem !important;
+    width: auto !important;
+    bottom: 4.5rem !important;
+    max-height: 75vh !important;
   }
 }
 
+/* ════════════ �?480px ════════════ */
 @media (max-width: 480px) {
+  /* Mini stat text sizes */
   .tracker-mini-label {
     font-size: 0.625rem;
   }
@@ -1854,4 +2216,160 @@
   .tracker-mini-val {
     font-size: 0.9375rem;
   }
+
+  /* Hero stat values smaller */
+  .tracker-hero-stat-val {
+    font-size: 1.1rem;
+  }
+
+  /* Calendar: show only amount, hide date number slightly */
+  .tracker-day {
+    min-height: 48px;
+  }
+
+  .tracker-day-top {
+    font-size: 0.75rem;
+  }
+
+  .tracker-day-bottom {
+    font-size: 0.6rem;
+  }
+
+  /* Action buttons smaller */
+  .action-btns .btn {
+    font-size: 0.65rem !important;
+    padding: var(--sp-1) var(--sp-2) !important;
+  }
+
+  /* Monthly summary amount */
+  .tracker-hero-amount {
+    font-size: 1.5rem;
+  }
+
+  /* Chatbot FAB: circular icon on mobile */
+  .chatbot-fab {
+    width: 52px !important;
+    height: 52px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    font-size: 1.5rem !important;
+    min-width: 0 !important;
+  }
+
+  /* Replace text with icon via CSS if possible, but easier to just hide text in HTML */
+  /* Or we can use a ::before pseudo element if we can't edit HTML safely */
+  
+  .chatbot-fab span {
+    display: none;
+  }
 }
+
+/* ════════════ �?360px ════════════ */
+@media (max-width: 360px) {
+  /* Smallest phones �?ultra compact */
+  .tracker-day {
+    min-height: 40px;
+    padding: 2px;
+  }
+
+  .tracker-day-top {
+    font-size: 0.65rem;
+    margin-bottom: 0;
+  }
+
+  .tracker-day-bottom {
+    font-size: 0.55rem;
+  }
+
+  .tracker-weekdays {
+    font-size: 0.45rem;
+    gap: 2px;
+  }
+
+  .tracker-days {
+    gap: 2px;
+  }
+
+  .tracker-hero-amount {
+    font-size: 1.35rem;
+  }
+
+  /* Very small mini-stat layout */
+  .tracker-mini-stat {
+    padding: var(--sp-3) var(--sp-3);
+    gap: var(--sp-2);
+  }
+
+  .tracker-mini-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Reduce section padding */
+  .tracker-calendar {
+    padding: var(--sp-3);
+  }
+
+  .chart-card {
+    padding: var(--sp-3) !important;
+  }
+
+  .chart-container {
+    height: 180px;
+  }
+}
+@media (max-width: 859px) {
+  #resetTrackerBtn {
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    background: transparent !important;
+    color: #fff !important;
+  }
+}
+/* ── Theme Toggle Icon Fix (Global) ── */
+.theme-toggle-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0 !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 100;
+}
+
+.theme-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  transform: scale(1.05);
+}
+
+.theme-icon {
+  width: 32px !important;
+  height: 32px !important;
+  stroke-width: 2.5px !important;
+  fill: none !important;
+}
+
+/* Specific high-contrast colors */
+.theme-icon-sun {
+  stroke: #FFD700 !important; /* Gold */
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.3));
+}
+
+.theme-icon-moon {
+  stroke: #F8FAFC !important; /* White */
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.2));
+}
+
+[data-theme="light"] .theme-toggle-btn {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .theme-icon-moon {
+  stroke: #5C6784 !important; /* Deep Blue in Light Mode */
+}
+

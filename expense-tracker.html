@@ -65,18 +65,18 @@
         <button class="btn btn-ghost" type="button" id="resetTrackerBtn">Reset</button>
         <button class="btn btn-ghost theme-toggle-btn" type="button" id="themeToggleBtn" aria-label="Toggle dark mode"
           title="Toggle dark mode">
-          <svg class="theme-icon theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="4" />
             <path
               d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
           </svg>
-          <svg class="theme-icon theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
           </svg>
         </button>
-        <a class="btn btn-primary" href="./#projects">Back</a>
+        <a class="btn btn-primary header-back-btn" href="./">Back</a>
       </nav>
     </div>
   </header>
@@ -124,8 +124,7 @@
             <div class="tracker-main-layout" id="trackerMainLayout" hidden>
 
               <!-- ── HERO BANNER & EXTRA ── -->
-              <div
-                style="display: flex; gap: var(--sp-4); margin-bottom: var(--sp-6); align-items: stretch; width: 100%;">
+              <div class="tracker-hero-row">
                 <div class="tracker-hero" id="trackerHero" style="margin-bottom: 0;">
                   <div class="tracker-hero-left">
                     <p class="tracker-hero-label">Total Remaining</p>
@@ -153,7 +152,7 @@
                 </div>
 
                 <!-- ── EXTRA SIDE CARDS ── -->
-                <div style="flex: 1; display: flex; gap: var(--sp-4); align-items: stretch;">
+                <div class="tracker-side-cards">
                   <!-- User Manual Card
                    <a href="#" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: var(--sp-3); text-decoration: none; background: rgba(255,255,255,0.03); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--sp-4); transition: background 0.2s ease;">
                        <div style="font-size: 1.6rem;">📖</div>
@@ -170,14 +169,16 @@
                       style="font-size: 0.75rem; color: var(--color-muted-foreground); font-weight: 600; white-space: nowrap;">
                       Contact creator</div>
                     <div style="display: flex; gap: var(--sp-2);">
-                      <a href="https://web.facebook.com/profile.php?id=61581862737689" target="_blank" rel="noopener noreferrer" title="Facebook"
-                         style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); color: var(--color-muted-foreground); text-decoration: none; border: 1px solid var(--color-border); transition: background 0.2s ease;">
-                         <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-                           <path
-                             d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12c0-5.523-4.477-10-10-10z" />
-                         </svg>
-                       </a>
-                       <a href="https://www.instagram.com/_desolation01" target="_blank" rel="noopener noreferrer" title="Instagram"
+                      <a href="https://web.facebook.com/profile.php?id=61581862737689" target="_blank"
+                        rel="noopener noreferrer" title="Facebook"
+                        style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); color: var(--color-muted-foreground); text-decoration: none; border: 1px solid var(--color-border); transition: background 0.2s ease;">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                          <path
+                            d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12c0-5.523-4.477-10-10-10z" />
+                        </svg>
+                      </a>
+                      <a href="https://www.instagram.com/_desolation01" target="_blank" rel="noopener noreferrer"
+                        title="Instagram"
                         style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); color: var(--color-muted-foreground); text-decoration: none; border: 1px solid var(--color-border); transition: background 0.2s ease;">
                         <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
                           <path
@@ -191,7 +192,7 @@
 
               <!-- ── MINI STATS ── -->
               <div class="tracker-mini-stats">
-                <div class="tracker-mini-stat">
+                <div class="tracker-mini-stat tracker-mini-stat--green">
                   <div class="tracker-mini-icon tracker-mini-icon--green">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                       stroke-linecap="round" stroke-linejoin="round">
@@ -215,7 +216,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="tracker-mini-stat">
+                <div class="tracker-mini-stat tracker-mini-stat--blue">
                   <div class="tracker-mini-icon tracker-mini-icon--blue">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                       stroke-linecap="round" stroke-linejoin="round">
@@ -242,7 +243,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="tracker-mini-stat">
+                <div class="tracker-mini-stat tracker-mini-stat--red">
                   <div class="tracker-mini-icon tracker-mini-icon--red">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                       stroke-linecap="round" stroke-linejoin="round">
@@ -540,9 +541,10 @@
     </section>
   </div>
 
-  <div class="chatbot" aria-live="polite">
-    <button class="chatbot-fab" type="button" aria-controls="chatbot-panel" aria-expanded="false">
-      Chat
+  <div class="chatbot">
+    <button class="chatbot-fab" type="button" aria-haspopup="dialog" aria-expanded="false">
+      <span class="fab-icon">💬</span>
+      <span class="fab-text">Chat</span>
     </button>
 
     <section class="chatbot-panel" id="chatbot-panel" aria-label="Financial Assistant" hidden>
@@ -601,26 +603,31 @@
       var btn = document.getElementById('themeToggleBtn');
       var html = document.documentElement;
       var stored = localStorage.getItem('xpense_theme');
-      if (stored === 'dark') html.setAttribute('data-theme', 'dark');
 
       function updateIcon() {
-        var isDark = html.getAttribute('data-theme') === 'dark';
-        btn.querySelector('.theme-icon-sun').style.display = isDark ? 'none' : 'block';
-        btn.querySelector('.theme-icon-moon').style.display = isDark ? 'block' : 'none';
+        var isLight = html.getAttribute('data-theme') === 'light';
+        btn.querySelector('.theme-icon-sun').style.display = isLight ? 'none' : 'inline-flex';
+        btn.querySelector('.theme-icon-moon').style.display = isLight ? 'inline-flex' : 'none';
       }
 
       if (btn) {
+        // Initial state logic: if stored is light, set light. Else default is dark.
+        if (stored === 'light') html.setAttribute('data-theme', 'light');
         updateIcon();
+
         btn.addEventListener('click', function () {
-          var isDark = html.getAttribute('data-theme') === 'dark';
-          if (isDark) {
+          var isLight = html.getAttribute('data-theme') === 'light';
+          if (isLight) {
             html.removeAttribute('data-theme');
-            localStorage.setItem('xpense_theme', 'light');
-          } else {
-            html.setAttribute('data-theme', 'dark');
             localStorage.setItem('xpense_theme', 'dark');
+          } else {
+            html.setAttribute('data-theme', 'light');
+            localStorage.setItem('xpense_theme', 'light');
           }
           updateIcon();
+
+          // Dispatch event for other components (like Chart.js) to potentially listen
+          window.dispatchEvent(new Event('themechange'));
         });
       }
     })();

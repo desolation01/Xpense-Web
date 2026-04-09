@@ -103,33 +103,32 @@
 
 /* ── Light Mode (toggle override) ── */
 [data-theme="light"] {
-  --color-primary: #18181B;
+  --color-primary: #5C6784; /* Deep Muted Blue/Gray */
   --color-primary-foreground: #ffffff;
-  --color-secondary: #3F3F46;
-  --color-secondary-foreground: #ffffff;
-  --color-accent: #2563EB;
+  --color-secondary: #E0E7FF;
+  --color-secondary-foreground: #4338CA;
+  --color-accent: #8E94F2; /* Pastel Indigo */
   --color-accent-foreground: #ffffff;
-  --color-background: #FAFAFA;
-  --color-background-foreground: #09090B;
-  --color-surface: rgba(255, 255, 255, 0.88);
-  --color-surface-foreground: #09090B;
-  --color-surface-strong: #ffffff;
-  --color-muted: #E8ECF0;
-  --color-muted-foreground: #64748B;
-  --color-border: rgba(9, 9, 11, 0.08);
-  --color-border-strong: #E4E4E7;
-  --color-destructive: #DC2626;
+  --color-background: #F7F8FC; /* Soft Lavender Cream */
+  --color-background-foreground: #2D3748;
+  --color-surface: #FFFFFF;
+  --color-surface-foreground: #2D3748;
+  --color-surface-strong: #FFFFFF;
+  --color-muted: #F0F2F9;
+  --color-muted-foreground: #718096;
+  --color-border: #E2E8F0;
+  --color-border-strong: #CBD5E0;
+  --color-destructive: #FF8A8A; /* Pastel Red */
   --color-destructive-foreground: #ffffff;
-  --color-success: #16A34A;
-  --color-success-foreground: #ffffff;
-  --color-warning: #D97706;
-  --color-warning-foreground: #ffffff;
-  --color-grid: rgba(37, 99, 235, 0.05);
-  --color-glow: rgba(37, 99, 235, 0.08);
-  --color-glow-secondary: rgba(63, 63, 70, 0.06);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 12px 32px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08), 0 24px 56px rgba(0, 0, 0, 0.10);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.12), 0 40px 88px rgba(0, 0, 0, 0.14);
-  --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --color-success: #9AE6B4; /* Pastel Green */
+  --color-success-foreground: #22543D;
+  --color-warning: #FBD38D; /* Pastel Orange */
+  --color-warning-foreground: #744210;
+  --color-grid: rgba(142, 148, 242, 0.1);
+  --color-glow: rgba(142, 148, 242, 0.05);
+  --color-glow-secondary: rgba(224, 231, 255, 0.5);
+  --shadow-sm: 0 2px 4px rgba(160, 174, 192, 0.1);
+  --shadow-md: 0 4px 12px rgba(160, 174, 192, 0.15);
+  --shadow-lg: 0 10px 25px rgba(160, 174, 192, 0.2);
+  --shadow-xl: 0 20px 48px rgba(160, 174, 192, 0.25);
 }
