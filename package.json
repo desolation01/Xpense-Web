@@ -1,0 +1,21 @@
+{
+  "name": "portfolio-web",
+  "version": "1.0.0",
+  "description": "Portfolio website with expense tracker",
+  "main": "index.html",
+  "scripts": {
+    "start": "node dev-server.js",
+    "vercel": "vercel dev",
+    "deploy": "vercel deploy"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.3.1",
+    "jsonwebtoken": "^9.0.2",
+    "marked": "^11.1.1"
+  },
+  "devDependencies": {
+    "vercel": "^32.6.0"
+  }
+}

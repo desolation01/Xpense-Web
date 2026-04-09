@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Xpense</title>
+  <meta name="description" content="Calendar-themed expense tracker demo." />
+  <link rel="icon" href="./assets/fav.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/styles.css?v=2.0.0" />
+  <link rel="stylesheet" href="css/tracker.css?v=2.2.0" />
+
+  <!-- Theme restore (before paint to avoid flash) -->
+  <script>
+    (function () {
+      if (localStorage.getItem('xpense_theme') === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+  <!-- Auth guard: redirect to login if no token -->
+  <script>
+    (function () {
+      var token = localStorage.getItem('auth_token');
+      if (!token) { window.location.replace('./tracker-login.html'); }
+    })();
+  </script>
+</head>
+
+<body>
+  <!-- <a class="skip-link" href="#main">Skip to content</a> -->
+
+  <header class="site-header" id="trackerHeader" style="display: none;">
+    <div class="container header-inner">
+      <a class="brand" href="./" aria-label="Back to portfolio projects">
+        <span class="brand-text">Xpense</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-label="Toggle Navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+
+      <nav class="site-nav" aria-label="Secondary">
+        <div class="sync-wrapper" style="display:flex; gap:0.4rem; align-items:center;">
+          <div class="tracker-sync-controls" id="authControls" style="display: flex; align-items: center; gap: 0.5rem;">
+            <button class="btn btn-small btn-ghost" id="loginOpenBtn">Login</button>
+            <div id="userStatus" style="display: none; align-items: center; gap: 0.5rem;">
+              <span id="usernameDisplay" class="fineprint"
+                style="color: var(--color-primary); font-weight: 600;"></span>
+              <button class="btn btn-small btn-ghost" id="logoutBtn">Logout</button>
+            </div>
+            <button class="btn btn-ghost tracker-sync-btn" type="button" id="syncBtn" title="Sync with server"
+              style="display: none;">
+              <span class="sync-icon">☁️</span>
+            </button>
+          </div>
+        </div>
+        <button class="btn btn-ghost" type="button" id="resetTrackerBtn">Reset</button>
+        <button class="btn btn-ghost theme-toggle-btn" type="button" id="themeToggleBtn" aria-label="Toggle dark mode"
+          title="Toggle dark mode">
+          <svg class="theme-icon theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+          </svg>
+          <svg class="theme-icon theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        </button>
+        <a class="btn btn-primary" href="./#projects">Back</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="trackerMain">
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <div class="section-info">
+            <img src="./assets/hehehe.png" alt="Xpense Logo" class="brand-logo-large">
+            <h1 class="section-title">Monthly Expense Tracker</h1>
+            <p class="section-subtitle">
+              Set your monthly salary, then click a day to add expenses or gains.
+            </p>
+          </div>
+
+          <div class="grid tracker-grid" id="trackerGrid">
+            <div class="card tracker-setup" id="salaryCard">
+              <h2 class="card-h">Step 1: Enter your monthly salary</h2>
+              <p class="card-p">This stays on your device (saved in your browser).</p>
+              <form class="tracker-salary-form" id="salaryForm">
+                <label class="field">
+                  <span class="field-label">Monthly salary</span>
+                  <input class="field-input" id="salaryInput" inputmode="decimal" autocomplete="off"
+                    placeholder="e.g. 30000" required />
+                </label>
+                <label class="field">
+                  <span class="field-label">Monthly budget (Max spend)</span>
+                  <input class="field-input" id="budgetInput" inputmode="decimal" autocomplete="off"
+                    placeholder="e.g. 10000" />
+                </label>
+                <label class="field">
+                  <span class="field-label">Weekly budget (Target spend)</span>
+                  <input class="field-input" id="weeklyBudgetInput" inputmode="decimal" autocomplete="off"
+                    placeholder="e.g. 2500" />
+                </label>
+                <button class="btn btn-primary" id="salarySubmitBtn" type="submit">Continue</button>
+              </form>
+              <p class="fineprint">
+                Tip: click <strong>Reset</strong> any time to clear salary and expenses.
+              </p>
+            </div>
+
+            <!-- Main Layout Container for Calendar and Stats -->
+            <div class="tracker-main-layout" id="trackerMainLayout" hidden>
+
+              <!-- ── HERO BANNER & EXTRA ── -->
+              <div style="display: flex; gap: var(--sp-4); margin-bottom: var(--sp-6); align-items: stretch; width: 100%;">
+                <div class="tracker-hero" id="trackerHero" style="margin-bottom: 0;">
+                  <div class="tracker-hero-left">
+                    <p class="tracker-hero-label">Total Remaining</p>
+                    <p class="tracker-hero-amount" id="remainingDisplay">₱0.00</p>
+                  </div>
+                  <div class="tracker-hero-right">
+                    <div class="tracker-hero-stat">
+                      <p class="tracker-hero-stat-label" style="text-transform: uppercase;">Spent this month</p>
+                      <p class="tracker-hero-stat-val" id="monthExpDisplayHero">₱0.00</p>
+                    </div>
+                    <div class="tracker-hero-divider"></div>
+                    <div class="tracker-hero-stat">
+                      <p class="tracker-hero-stat-label" style="text-transform: uppercase;">Spent this week</p>
+                      <p class="tracker-hero-stat-val" id="weekExpDisplayHero">₱0.00</p>
+                    </div>
+                    <div class="tracker-hero-divider"></div>
+                    <div class="tracker-hero-stat">
+                      <p class="tracker-hero-stat-label">Salary</p>
+                      <p class="tracker-hero-stat-val" id="salaryDisplay">₱0.00</p>
+                      <p class="tracker-hero-stat-delta">Monthly income</p>
+                    </div>
+                    <button class="btn btn-small btn-ghost edit-budget-btn" id="editBudgetBtn" title="Edit budgets">Edit</button>
+                  </div>
+                </div>
+                
+                <!-- ── EXTRA SIDE CARDS ── -->
+                <div style="flex: 1; display: flex; gap: var(--sp-4); align-items: stretch;">
+                   <!-- User Manual Card -->
+                   <a href="#" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: var(--sp-3); text-decoration: none; background: rgba(255,255,255,0.03); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--sp-4); transition: background 0.2s ease;">
+                       <div style="font-size: 1.6rem;">📖</div>
+                       <div style="text-align: left;">
+                          <div style="font-size: 0.7rem; color: var(--color-muted-foreground); margin-bottom: 2px;">Help Guide</div>
+                          <div style="font-weight: 700; font-size: 0.95rem; color: #fff; white-space: nowrap;">User Manual</div>
+                       </div>
+                   </a>
+                   
+                   <!-- Contact Card -->
+                   <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-4); background: rgba(255,255,255,0.03); border: 1px solid var(--color-border); border-radius: var(--radius-lg);">
+                       <div style="font-size: 0.75rem; color: var(--color-muted-foreground); font-weight: 600; white-space: nowrap;">Contact creator</div>
+                       <div style="display: flex; gap: var(--sp-2);">
+                           <a href="#" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); color: var(--color-muted-foreground); text-decoration: none; border: 1px solid var(--color-border); transition: background 0.2s ease;">
+                               <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12c0-5.523-4.477-10-10-10z"/></svg>
+                           </a>
+                           <a href="#" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); color: var(--color-muted-foreground); text-decoration: none; border: 1px solid var(--color-border); transition: background 0.2s ease;">
+                               <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                           </a>
+                       </div>
+                   </div>
+                </div>
+              </div>
+
+              <!-- ── MINI STATS ── -->
+              <div class="tracker-mini-stats">
+                <div class="tracker-mini-stat">
+                  <div class="tracker-mini-icon tracker-mini-icon--green">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="12" y1="1" x2="12" y2="23" />
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </svg>
+                  </div>
+                  <div style="flex: 1; min-width: 0;">
+                    <p class="tracker-mini-label">MONTHLY BUDGET REMAINING</p>
+                    <p class="tracker-mini-val tracker-mini-val--green" id="savingsDisplay">₱0.00</p>
+                    <div style="margin-top: 0.5rem;">
+                      <div class="tracker-hero-bar-wrap">
+                        <div class="tracker-hero-bar-bg" style="height: 4px;">
+                          <div class="tracker-hero-bar-fill" id="heroBudgetBar" style="width:0%"></div>
+                        </div>
+                        <div class="tracker-hero-bar-labels" style="font-size: 0.65rem; padding-top: 0.25rem;">
+                          <span id="heroSpentLabel">₱0.00 spent</span>
+                          <span id="heroPctLabel">0% used</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="tracker-mini-stat">
+                  <div class="tracker-mini-icon tracker-mini-icon--blue">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                  </div>
+                  <div style="flex: 1; min-width: 0;">
+                    <p class="tracker-mini-label" style="text-transform: uppercase;">WEEKLY BUDGET REMAINING</p>
+                    <p class="tracker-mini-val" id="weekBudgetMiniDisplay">₱0.00</p>
+                    <div style="margin-top: 0.5rem;">
+                      <div class="tracker-hero-bar-wrap">
+                        <div class="tracker-hero-bar-bg" style="height: 4px;">
+                          <div class="tracker-hero-bar-fill" id="weekBudgetBar" style="width:0%; background: #3b82f6;">
+                          </div>
+                        </div>
+                        <div class="tracker-hero-bar-labels" style="font-size: 0.65rem; padding-top: 0.25rem;">
+                          <span id="weekSpentLabel">₱0.00 spent</span>
+                          <span id="weekPctLabel">0% used</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="tracker-mini-stat">
+                  <div class="tracker-mini-icon tracker-mini-icon--red">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p class="tracker-mini-label">Total Spent</p>
+                    <p class="tracker-mini-val" id="totalSpentDisplay">₱0.00</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ── BODY: LEFT COL + RIGHT PANEL ── -->
+              <div class="tracker-body">
+
+                <!-- Left Column: Calendar → Chart → Final Summary -->
+                <div class="tracker-left-col">
+
+                  <!-- Calendar -->
+                  <div class="card tracker-calendar" id="calendarCard">
+                    <div class="tracker-controls">
+                      <div class="search-box">
+                        <input type="text" id="searchInput" class="field-input" placeholder="Search expenses..." />
+                      </div>
+                      <div class="action-btns">
+                        <div id="clearModeBtns" class="clear-confirm-btns" style="display:none">
+                          <button class="btn btn-small btn-ghost btn-icon" id="clearConfirmBtn"
+                            title="Confirm clear day">✔️</button>
+                          <button class="btn btn-small btn-ghost btn-icon" id="clearCancelBtn"
+                            title="Cancel clear">✕</button>
+                        </div>
+                        <button class="btn btn-small btn-ghost" id="clearModeBtn"
+                          title="Enter day clear mode">Clear</button>
+                        <button class="btn btn-small btn-ghost" id="batchDeleteOpenBtn"
+                          title="Batch delete entries">Batch Delete</button>
+                        <button class="btn btn-small btn-ghost" id="exportBtn" title="Export to CSV">Export</button>
+                        <label class="btn btn-small btn-ghost" style="cursor:pointer" title="Import from CSV">
+                          Import
+                          <input type="file" id="importFile" accept=".csv" style="display:none" />
+                        </label>
+                      </div>
+                    </div>
+                    <div class="tracker-calendar-head">
+                      <div>
+                        <p class="tracker-month" id="monthLabel">—</p>
+                        <p class="tracker-hint">Click a day to add an expense or gain</p>
+                      </div>
+                      <div class="tracker-calendar-actions">
+                        <label class="tracker-month-pick field" aria-label="Pick month">
+                          <span class="field-label">Month</span>
+                          <select class="field-input" id="monthSelect" aria-label="Month"></select>
+                        </label>
+                        <button class="btn btn-small btn-ghost" type="button" id="prevMonthBtn">Prev</button>
+                        <button class="btn btn-small btn-ghost" type="button" id="todayBtn">Today</button>
+                        <button class="btn btn-small btn-ghost" type="button" id="nextMonthBtn">Next</button>
+                      </div>
+                    </div>
+                    <div class="tracker-weekdays" aria-hidden="true">
+                      <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                    </div>
+                    <div class="tracker-days" id="daysGrid" role="grid" aria-label="Calendar"></div>
+                  </div>
+
+                  <!-- Chart -->
+                  <div class="card chart-card" id="chartCard">
+                    <div class="chart-header">
+                      <select class="field-input-mini" id="chartTypeSelect">
+                        <option value="pie" selected>Categories</option>
+                        <option value="line">Trend</option>
+                      </select>
+                      <div id="chartMetricLabel" style="display:block">
+                        <select class="field-input-mini" id="chartMetricSelect">
+                          <option value="all">All Lines</option>
+                          <option value="expense">Daily Expense</option>
+                          <option value="gain">Daily Gain</option>
+                          <option value="budget">Remaining Budget</option>
+                          <option value="balance">Remaining Balance</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="chart-container">
+                      <canvas id="categoryChart"></canvas>
+                    </div>
+                  </div>
+
+                  <!-- Final Summary -->
+                  <div class="card final-summary-card" id="finalSummaryCard">
+                    <div class="summary-content">
+                      <div class="summary-left">
+                        <p class="summary-eyebrow">FINAL SUMMARY</p>
+                        <h2 class="summary-title">Total Monthly Expense</h2>
+                        <p class="summary-desc" id="summaryDesc">
+                          Overall expenditure across all categories including fixed costs, subscriptions, and variable
+                          daily
+                          spends for <span id="summaryMonthName">Month Year</span>.
+                        </p>
+                        <div class="summary-actions">
+                          <button class="btn btn-primary btn-ai-analyze" id="analyzeFinalBtn">
+                            <span class="ai-spark">✨</span> Analyze Financials
+                          </button>
+                        </div>
+                      </div>
+                      <div class="summary-right">
+                        <div class="summary-amount-wrapper">
+                          <span class="summary-currency">₱</span>
+                          <span class="summary-val" id="summaryTotalVal">0</span>
+                          <span class="summary-decimal">.00</span>
+                        </div>
+                        <div class="summary-badge-container">
+                          <button class="trend-badge" id="summaryTrendBadge" title="Click to toggle comparison view">
+                            <span class="trend-icon"></span>
+                            <span class="trend-text" id="summaryTrendText">0% vs Last Month</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="card feedback-card" style="margin-top:2rem;grid-column:1/-1">
+                      <h3 class="card-h" style="margin-bottom:0.5rem">Send Feedback</h3>
+                      <p class="card-p" style="margin-bottom:1.5rem">Have a suggestion or found a bug? Let the creator
+                        know!</p>
+                      <form action="https://formspree.io/f/xqegpgrj" method="POST" class="form">
+                        <label class="field">
+                          <span class="field-label">Your email</span>
+                          <input type="email" name="email" class="field-input" placeholder="your@email.com" required>
+                        </label>
+                        <label class="field">
+                          <span class="field-label">Your feedback</span>
+                          <textarea name="message" class="field-input" rows="4" placeholder="What's on your mind?"
+                            required style="resize:vertical"></textarea>
+                        </label>
+                        <button type="submit" class="btn btn-primary" style="margin-top:0.5rem">Send Message</button>
+                      </form>
+                    </div>
+                  </div>
+
+                </div><!-- /tracker-left-col -->
+
+                <!-- Right Panel -->
+                <div class="tracker-right-panel">
+
+                  <!-- Recent Transactions -->
+                  <div class="card recent-transactions-card" id="recentTransactionsCard">
+                    <div class="stats-head">
+                      <h2 class="stats-title">Recent Transactions</h2>
+                      <span class="stats-badge" id="currentMonthBadge">—</span>
+                    </div>
+                    <div id="recentTransactionsList" class="transactions-list"></div>
+                    <div class="daily-avg-container">
+                      <div class="daily-avg-label">DAILY AVERAGE</div>
+                      <div class="daily-avg-value" id="dailyAvgVal">₱0.00</div>
+                    </div>
+                  </div>
+
+                  <!-- Weekly Totals -->
+                  <div class="card weekly-totals-card" id="weeklyCard">
+                    <div class="stats-head">
+                      <h2 class="stats-title">Weekly Breakdown</h2>
+                      <span class="stats-badge" id="activeMonthBadge">Active Month</span>
+                    </div>
+                    <div id="weeklyBreakdownList" class="weekly-list"></div>
+                    <div class="savings-rate-box">
+                      <span class="savings-label">SAVINGS RATE</span>
+                      <span class="savings-val" id="savingsRateVal">0%</span>
+                    </div>
+                  </div>
+
+                </div><!-- /tracker-right-panel -->
+
+              </div><!-- /tracker-body -->
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="tracker-modal" id="entryModal" aria-hidden="true">
+    <div class="tracker-modal-backdrop" data-close="true"></div>
+    <section class="tracker-modal-panel" role="dialog" aria-modal="true" aria-label="Add entries">
+      <header class="tracker-modal-head">
+        <div>
+          <p class="tracker-modal-title" id="modalDateTitle">—</p>
+          <p class="tracker-modal-sub" id="modalDaySummary">—</p>
+        </div>
+        <button class="tracker-modal-close" type="button" aria-label="Close" data-close="true">✕</button>
+      </header>
+
+      <div class="tracker-modal-body">
+        <div class="tracker-entry-list" id="entryList" aria-label="Entries"></div>
+
+        <form class="tracker-entry-form" id="entryForm">
+          <div class="tracker-entry-row">
+            <label class="field">
+              <span class="field-label">Type</span>
+              <select class="field-input" id="entryType">
+                <option value="expense">Expense</option>
+                <option value="gain">Gain</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Cost</span>
+              <input class="field-input" id="entryAmount" inputmode="decimal" placeholder="e.g. 250" required />
+            </label>
+          </div>
+
+          <label class="field">
+            <span class="field-label">Label</span>
+            <input class="field-input" id="entryLabel" placeholder="e.g. Lunch at Cafe" required />
+          </label>
+
+          <div class="tracker-entry-row">
+            <label class="field">
+              <span class="field-label">Category</span>
+              <select class="field-input" id="entryCategory">
+                <option value="General">General</option>
+                <option value="Food">Food</option>
+                <option value="Transport">Transport</option>
+                <option value="Rent">Rent</option>
+                <option value="Bills">Bills</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Health">Health</option>
+                <option value="Salary">Salary</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Frequency</span>
+              <select class="field-input" id="entryRecurring">
+                <option value="none">None</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </label>
+          </div>
+
+          <button class="btn btn-primary" type="submit">Add Entry</button>
+          <p class="fineprint">Entries are saved locally. Sync to keep them on the server.</p>
+        </form>
+      </div>
+  </div>
+  </section>
+  </div>
+
+  <div class="tracker-modal" id="batchDeleteModal" aria-hidden="true">
+    <div class="tracker-modal-backdrop" data-close-batch="true"></div>
+    <section class="tracker-modal-panel" role="dialog" aria-modal="true" aria-label="Batch delete entries">
+      <header class="tracker-modal-head">
+        <div>
+          <p class="tracker-modal-title">Batch Delete</p>
+          <p class="tracker-modal-sub">Delete multiple entries in the current month by filters.</p>
+        </div>
+        <button class="tracker-modal-close" type="button" aria-label="Close" data-close-batch="true">✕</button>
+      </header>
+
+      <div class="tracker-modal-body">
+        <form class="tracker-entry-form" id="batchDeleteForm">
+          <div class="tracker-entry-row">
+            <label class="field">
+              <span class="field-label">Category (optional)</span>
+              <select class="field-input" id="batchDeleteCategory">
+                <option value="">-- Any --</option>
+                <option value="General">General</option>
+                <option value="Food">Food</option>
+                <option value="Transport">Transport</option>
+                <option value="Rent">Rent</option>
+                <option value="Bills">Bills</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Health">Health</option>
+                <option value="Salary">Salary</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Cost (optional)</span>
+              <input class="field-input" id="batchDeleteAmount" inputmode="decimal" placeholder="e.g. 250" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span class="field-label">Label Match (optional)</span>
+            <input class="field-input" id="batchDeleteLabel" placeholder="e.g. Lunch" />
+          </label>
+
+          <p class="fineprint" style="margin-bottom: 1rem; color: #ff4d6d;">
+            * At least one filter is required. Only affects the currently viewed month.
+          </p>
+
+          <button class="btn btn-primary" type="submit" style="background-color: #ff4d6d; border-color: #ff4d6d;">Delete
+            Matching Entries</button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <div class="chatbot" aria-live="polite">
+    <button class="chatbot-fab" type="button" aria-controls="chatbot-panel" aria-expanded="false">
+      Chat
+    </button>
+
+    <section class="chatbot-panel" id="chatbot-panel" aria-label="Financial Assistant" hidden>
+      <header class="chatbot-header">
+        <div class="chatbot-title">
+          <p class="chatbot-name">Financial Assistant</p>
+          <p class="chatbot-sub">Ask for spending analysis or budget advice</p>
+        </div>
+        <button class="chatbot-close" type="button" aria-label="Close chat">✕</button>
+      </header>
+
+      <div class="chatbot-messages" role="log" aria-label="Chat messages"></div>
+
+      <form class="chatbot-form" aria-label="Send a message">
+        <input class="chatbot-input" name="message" autocomplete="off" placeholder="Type a message…" required />
+        <button class="btn btn-primary" type="submit">Send</button>
+      </form>
+      <p class="chatbot-note">
+        Powered by Groq. I can see your expenses and help you stay on budget.
+      </p>
+    </section>
+  </div>
+
+  <div class="global-chat-container" aria-live="polite">
+    <!--
+    <button class="chatbot-fab" id="globalChatToggle" type="button">
+      Global Chat
+    </button>
+    -->
+    <div class="global-chat-window" id="globalChatPanel" hidden>
+      <header class="chatbot-header">
+        <div class="chatbot-title">
+          <p class="chatbot-name">Global Chat</p>
+          <p class="chatbot-sub"><span id="globalOnlineCount">1</span> members online</p>
+        </div>
+        <input type="text" id="globalChatNickname" class="nickname-input" placeholder="Nickname" maxlength="15" />
+      </header>
+      <div class="chatbot-messages" id="globalChatMessages" style="flex: 1; overflow-y: auto;"></div>
+      <form class="chatbot-form" id="globalChatForm">
+        <input class="chatbot-input" id="globalChatInput" placeholder="Type a message..." maxlength="200" required />
+        <button class="btn btn-primary" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Auth Modal (Removed, moved to landingWrapper) -->
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="js/tracker.js?v=1.3.0" defer></script>
+  <script src="js/chat.js?v=1.3.0" defer></script>
+  <script>
+    // ── Theme Toggle ──
+    (function () {
+      var btn = document.getElementById('themeToggleBtn');
+      var html = document.documentElement;
+      var stored = localStorage.getItem('xpense_theme');
+      if (stored === 'dark') html.setAttribute('data-theme', 'dark');
+
+      function updateIcon() {
+        var isDark = html.getAttribute('data-theme') === 'dark';
+        btn.querySelector('.theme-icon-sun').style.display = isDark ? 'none' : 'block';
+        btn.querySelector('.theme-icon-moon').style.display = isDark ? 'block' : 'none';
+      }
+
+      if (btn) {
+        updateIcon();
+        btn.addEventListener('click', function () {
+          var isDark = html.getAttribute('data-theme') === 'dark';
+          if (isDark) {
+            html.removeAttribute('data-theme');
+            localStorage.setItem('xpense_theme', 'light');
+          } else {
+            html.setAttribute('data-theme', 'dark');
+            localStorage.setItem('xpense_theme', 'dark');
+          }
+          updateIcon();
+        });
+      }
+    })();
+  </script>
+</body>
+
+</html>

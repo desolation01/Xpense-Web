@@ -1,0 +1,1908 @@
+const STORAGE_SALARY = "expense_tracker_salary";
+const STORAGE_BUDGET = "expense_tracker_budget";
+const STORAGE_WEEKLY_BUDGET = "expense_tracker_weekly_budget";
+const STORAGE_ENTRIES = "expense_tracker_entries_v2";
+
+// --- SECURITY & CSRF ---
+let csrfToken = null;
+async function fetchCsrfToken() {
+  if (csrfToken) return csrfToken;
+  try {
+    const r = await fetch("/api/api?action=token");
+    const data = await r.json();
+    if (data.token) csrfToken = data.token;
+    return csrfToken;
+  } catch (e) {
+    return null;
+  }
+}
+
+// --- JWT AUTH ---
+const AUTH_TOKEN_KEY = 'auth_token';
+const AUTH_USER_KEY = 'auth_username';
+
+function getAuthToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+function setAuthToken(token, username) {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  localStorage.setItem(AUTH_USER_KEY, username);
+}
+
+function clearAuthToken() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+}
+
+function getAuthHeaders() {
+  const token = getAuthToken();
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+function fmtMoney(n) {
+  if (!Number.isFinite(n)) return "—";
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
+function parseMoney(s) {
+  const cleaned = String(s).replace(/[^0-9.]/g, "");
+  if (!cleaned) return NaN;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function isoDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function loadSalary() {
+  const raw = localStorage.getItem(STORAGE_SALARY);
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+function loadBudget() {
+  const raw = localStorage.getItem(STORAGE_BUDGET);
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+function saveSalary(n) {
+  localStorage.setItem(STORAGE_SALARY, String(n));
+}
+
+function saveBudget(n) {
+  localStorage.setItem(STORAGE_BUDGET, String(n));
+}
+
+function saveWeeklyBudget(n) {
+  localStorage.setItem(STORAGE_WEEKLY_BUDGET, String(n));
+}
+
+function loadWeeklyBudget() {
+  const raw = localStorage.getItem(STORAGE_WEEKLY_BUDGET);
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+function loadEntries() {
+  try {
+    const raw = localStorage.getItem(STORAGE_ENTRIES);
+    if (!raw) return {};
+    let obj = JSON.parse(raw);
+    
+    // Ensure it's a standard object, not an array.
+    // JSON.stringify behaves differently on arrays when using string keys (like dates).
+    if (Array.isArray(obj)) {
+      const converted = {};
+      Object.keys(obj).forEach(k => {
+        if (isNaN(k)) converted[k] = obj[k]; // Copy named keys
+      });
+      return converted;
+    }
+    
+    return obj && typeof obj === "object" ? obj : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveEntries(obj) {
+  localStorage.setItem(STORAGE_ENTRIES, JSON.stringify(obj));
+}
+
+function main() {
+  const salaryCard = document.getElementById("salaryCard");
+  const calendarCard = document.getElementById("calendarCard");
+  const trackerGrid = document.getElementById("trackerGrid");
+  const chartCard = document.getElementById("chartCard");
+  const salaryForm = document.getElementById("salaryForm");
+  const salaryInput = document.getElementById("salaryInput");
+  const budgetInput = document.getElementById("budgetInput");
+  const weeklyBudgetInput = document.getElementById("weeklyBudgetInput");
+  const salaryDisplay = document.getElementById("salaryDisplay");
+  const budgetDisplay = document.getElementById("budgetDisplay");
+  const weeklyBudgetDisplay = document.getElementById("weeklyBudgetDisplay");
+  const remainingDisplay = document.getElementById("remainingDisplay");
+  const editBudgetBtn = document.getElementById("editBudgetBtn");
+  const resetBtn = document.getElementById("resetTrackerBtn");
+  const syncBtn = document.getElementById("syncBtn");
+  const loginOpenBtn = document.getElementById("loginOpenBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const userStatus = document.getElementById("userStatus");
+  const usernameDisplay = document.getElementById("usernameDisplay");
+  
+  const trackerHeader = document.getElementById("trackerHeader");
+
+  const monthLabel = document.getElementById("monthLabel");
+  const daysGrid = document.getElementById("daysGrid");
+  const prevBtn = document.getElementById("prevMonthBtn");
+  const nextBtn = document.getElementById("nextMonthBtn");
+  const todayBtn = document.getElementById("todayBtn");
+  const monthSelect = document.getElementById("monthSelect");
+
+  const searchInput = document.getElementById("searchInput");
+  const exportBtn = document.getElementById("exportBtn");
+  const importFile = document.getElementById("importFile");
+  const weeklyBreakdownList = document.getElementById("weeklyBreakdownList");
+  const monthlyTotalValue = document.getElementById("monthlyTotalValue");
+
+  const navSalaryDisplay = document.getElementById("navSalaryDisplay");
+  const navBudgetDisplay = document.getElementById("navBudgetDisplay");
+  const navRemainingDisplay = document.getElementById("navRemainingDisplay");
+  const trackerMain = document.getElementById("trackerMain");
+  const trackerMainLayout = document.getElementById("trackerMainLayout");
+  const activeMonthBadge = document.getElementById("activeMonthBadge");
+  const savingsRateVal = document.getElementById("savingsRateVal");
+  
+  // Final Summary Elements
+  const finalSummaryCard = document.getElementById("finalSummaryCard");
+  const summaryTotalVal = document.getElementById("summaryTotalVal");
+  const summaryMonthName = document.getElementById("summaryMonthName");
+  const summaryTrendBadge = document.getElementById("summaryTrendBadge");
+  const summaryTrendText = document.getElementById("summaryTrendText");
+  const summaryDesc = document.getElementById("summaryDesc");
+  const analyzeFinalBtn = document.getElementById("analyzeFinalBtn");
+  
+  let badgeMode = "percent"; // 'percent' or 'absolute'
+
+  // Essential elements for app to start
+  if (!salaryCard || !trackerGrid || !salaryForm || !salaryInput || !budgetInput || !trackerMain || !trackerMainLayout || !weeklyBudgetInput) {
+    console.error("Critical tracker elements missing from HTML.");
+    return;
+  }
+
+  let entriesByDay = loadEntries();
+  let salary = loadSalary();
+  let budget = loadBudget();
+  let weeklyBudget = loadWeeklyBudget();
+  let viewDate = new Date();
+  viewDate.setDate(1);
+  let activeDateIso = null;
+  let clearTargets = new Set();
+  let isClearMode = false;
+  let isDragging = false;
+  let dragAction = "add"; // "add" or "remove"
+  let chart = null;
+  let currentChartType = "pie";
+  let currentChartMetric = "all";
+
+  const chartTypeSelect = document.getElementById("chartTypeSelect");
+  const chartMetricSelect = document.getElementById("chartMetricSelect");
+  const chartMetricLabel = document.getElementById("chartMetricLabel");
+
+  const entryModal = document.getElementById("entryModal");
+  const modalDateTitle = document.getElementById("modalDateTitle");
+  const modalDaySummary = document.getElementById("modalDaySummary");
+  const entryList = document.getElementById("entryList");
+  const entryForm = document.getElementById("entryForm");
+  const entryType = document.getElementById("entryType");
+  const entryAmount = document.getElementById("entryAmount");
+  const entryLabel = document.getElementById("entryLabel");
+  const entryCategory = document.getElementById("entryCategory");
+  const entryRecurring = document.getElementById("entryRecurring");
+
+  const batchDeleteOpenBtn = document.getElementById("batchDeleteOpenBtn");
+  const batchDeleteModal = document.getElementById("batchDeleteModal");
+  const batchDeleteForm = document.getElementById("batchDeleteForm");
+  const batchDeleteCategory = document.getElementById("batchDeleteCategory");
+  const batchDeleteAmount = document.getElementById("batchDeleteAmount");
+  const batchDeleteLabel = document.getElementById("batchDeleteLabel");
+
+  const clearModeBtn = document.getElementById("clearModeBtn");
+  const clearModeBtns = document.getElementById("clearModeBtns");
+  const clearConfirmBtn = document.getElementById("clearConfirmBtn");
+  const clearCancelBtn = document.getElementById("clearCancelBtn");
+  const syncKeyInput = document.getElementById("syncKeyInput");
+
+  if (chartTypeSelect) {
+    chartTypeSelect.addEventListener("change", (e) => {
+      currentChartType = e.target.value;
+      if (chartMetricLabel) chartMetricLabel.style.display = currentChartType === "line" ? "block" : "none";
+      updateChart();
+    });
+  }
+
+  if (chartMetricSelect) {
+    chartMetricSelect.addEventListener("change", (e) => {
+      currentChartMetric = e.target.value;
+      updateChart();
+    });
+  }
+
+  async function checkAuthStatus() {
+    try {
+      const token = getAuthToken();
+      if (token) {
+        // Verify token is still valid
+        const res = await fetch("/api/api?action=status", {
+          headers: {
+            "Accept": "application/json",
+            ...getAuthHeaders()
+          }
+        });
+        const data = await res.json();
+        if (data && data.logged_in) {
+          setLoggedInUI(data.username);
+          initialSync();
+        } else {
+          clearAuthToken();
+          window.location.replace('./tracker-login.html');
+        }
+      } else {
+        window.location.replace('./tracker-login.html');
+      }
+    } catch (e) {
+      console.error("Auth status check failed.", e);
+      // On network error, still show the app if token exists (offline mode)
+      const token = getAuthToken();
+      if (token) {
+        const username = localStorage.getItem('auth_username') || 'User';
+        setLoggedInUI(username);
+      } else {
+        window.location.replace('./tracker-login.html');
+      }
+    }
+  }
+
+  function setLoggedInUI(username) {
+    loginOpenBtn.style.display = "none";
+    userStatus.style.display = "flex";
+    usernameDisplay.textContent = username;
+    syncBtn.style.display = "flex";
+    
+    trackerHeader.style.display = "block";
+    trackerMain.style.display = "block";
+    setTimeout(() => {
+      trackerHeader.classList.add("is-visible");
+      trackerMain.classList.add("is-visible");
+    }, 50);
+  }
+
+  // Initial Sync from server
+  async function initialSync() {
+    syncBtn.innerHTML = "⌛";
+    try {
+      const res = await fetch("/api/api?action=sync", {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        
+        // Merge or Overwrite?
+        // Server is source of truth, but ONLY if it actually returned data.
+        const serverHasData = (data.salary !== null || Object.keys(data.entriesByDay || {}).length > 0);
+        const localHasEntries = (Object.keys(entriesByDay || {}).length > 0);
+
+        if (serverHasData) {
+          // Cloud is non-empty: Accept cloud as truth
+          entriesByDay = data.entriesByDay || {};
+          salary = data.salary;
+          budget = data.budget;
+          weeklyBudget = data.weeklyBudget;
+          saveEntries(entriesByDay);
+          saveSalary(salary);
+          saveBudget(budget);
+          saveWeeklyBudget(weeklyBudget);
+        } else if (localHasEntries) {
+          // Cloud is empty, but local has data: Push local to Cloud!
+          triggerSync();
+        }
+        
+        ensureSetupState();
+        syncBtn.innerHTML = "✅";
+      }
+    } catch (e) {
+      console.log("Initial sync failed.");
+      syncBtn.innerHTML = "☁️";
+    } finally {
+      setTimeout(() => { syncBtn.innerHTML = "☁️"; }, 2000);
+    }
+  }
+
+  // Auto-run status check
+  checkAuthStatus();
+
+  salaryForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    let sVal = parseMoney(salaryInput.value);
+    let bVal = parseMoney(budgetInput.value);
+    let wbVal = parseMoney(weeklyBudgetInput.value);
+    
+    if (isNaN(sVal)) return;
+    
+    // Default budget to 0 if empty/invalid instead of failing silently
+    if (isNaN(bVal)) bVal = 0;
+    if (isNaN(wbVal)) wbVal = 0;
+
+    if (bVal > sVal) {
+      alert("Monthly budget cannot be greater than your monthly salary.");
+      budgetInput.focus();
+      return;
+    }
+
+    salary = sVal;
+    budget = bVal;
+    weeklyBudget = wbVal;
+    
+    saveSalary(salary);
+    saveBudget(budget);
+    saveWeeklyBudget(weeklyBudget);
+    
+    ensureSetupState();
+    triggerSync();
+  });
+
+  const monthNames = Array.from({ length: 12 }, (_, i) =>
+    new Date(2000, i, 1).toLocaleString(undefined, { month: "long" })
+  );
+
+  const triggerSync = async () => {
+    if (!usernameDisplay.textContent) return; 
+    syncBtn.disabled = true;
+    syncBtn.classList.add("is-syncing");
+    try {
+      const token = await fetchCsrfToken();
+      // Safeguard: Ensure we are sending the current global state
+      // Final sanity check: ensure we are not sending an array with string keys
+      let currentEntries = typeof entriesByDay !== 'undefined' ? entriesByDay : {};
+      if (Array.isArray(currentEntries)) {
+        const fixed = {};
+        Object.keys(currentEntries).forEach(k => fixed[k] = currentEntries[k]);
+        currentEntries = fixed;
+      }
+
+      const res = await fetch("/api/api?action=sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": token,
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({
+          entriesByDay: currentEntries,
+          entriesCount: Object.keys(currentEntries).length,
+          salary, budget, weeklyBudget
+        })
+      });
+
+      if (!res.ok) {
+        let errText = await res.text();
+        try {
+          const errJson = JSON.parse(errText);
+          if (errJson.error) errText = errJson.error;
+        } catch(e) {}
+        throw new Error(errText.substring(0, 200));
+      }
+
+      const data = await res.json();
+      console.log("Sync Response:", data);
+      
+      if (data.status === "success") {
+        syncBtn.innerHTML = "✅";
+      } else {
+        throw new Error(data.error || "Unknown sync error");
+      }
+
+      syncBtn.innerHTML = "✅";
+    } catch (err) {
+      console.error("Auto-sync failed:", err);
+      alert("Sync Error: " + err.message);
+      syncBtn.innerHTML = "❌";
+    } finally {
+      setTimeout(() => { 
+        syncBtn.classList.remove("is-syncing"); 
+        syncBtn.disabled = false; 
+      }, 1000);
+    }
+  };
+
+  function saveAndRefresh() {
+    saveEntries(entriesByDay);
+    renderCalendar();
+    updateHeaderTotals();
+    updateChart();
+    updateRecentTransactions();
+    triggerSync();
+  }
+
+  function updateHeaderTotals() {
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
+    const monthExp = sumMonthExpenses(entriesByDay, y, m);
+    const monthGain = sumMonthGains(entriesByDay, y, m);
+    
+    // Determine Current Week Logic
+    const now = new Date();
+    const isThisMonth = (now.getFullYear() === y && now.getMonth() === m);
+    let weeklyExp = 0;
+    
+    if (isThisMonth) {
+      const todayDate = now.getDate();
+      const lastDay = new Date(y, m + 1, 0).getDate();
+      const weeksArr = [
+        { start: 1, end: 7 },
+        { start: 8, end: 14 },
+        { start: 15, end: 21 },
+        { start: 22, end: 28 },
+        { start: 29, end: lastDay }
+      ];
+      const currentWeek = weeksArr.find(w => todayDate >= w.start && todayDate <= w.end);
+      if (currentWeek) {
+        for (let d = currentWeek.start; d <= currentWeek.end; d++) {
+          const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          const dayItems = entriesByDay[iso] || [];
+          weeklyExp += dayItems.reduce((acc, it) => acc + (it.type === "expense" ? it.amount : 0), 0);
+        }
+      }
+    }
+
+    const net = monthGain - monthExp;
+    const rem = salary == null ? 0 : (salary + net);
+    const monthBudgetRemain = budget ? (budget - monthExp) : 0;
+    const weekBudgetRemain = weeklyBudget ? (weeklyBudget - weeklyExp) : 0;
+
+    if (salaryDisplay) salaryDisplay.textContent = salary == null ? "—" : fmtMoney(salary);
+    
+    if (budgetDisplay) {
+      budgetDisplay.textContent = budget ? fmtMoney(monthBudgetRemain) : "—";
+      budgetDisplay.classList.toggle("negative", budget && monthBudgetRemain < 0);
+    }
+    
+    if (weeklyBudgetDisplay) {
+      weeklyBudgetDisplay.textContent = weeklyBudget ? fmtMoney(weekBudgetRemain) : "—";
+      weeklyBudgetDisplay.classList.toggle("negative", weeklyBudget && weekBudgetRemain < 0);
+    }
+
+    if (remainingDisplay) {
+      remainingDisplay.textContent = fmtMoney(rem);
+      remainingDisplay.classList.toggle("negative", rem < 0);
+    }
+    
+    const monthExpDisplayHero = document.getElementById("monthExpDisplayHero");
+    const weekExpDisplayHero = document.getElementById("weekExpDisplayHero");
+    if (monthExpDisplayHero) {
+      monthExpDisplayHero.textContent = fmtMoney(monthExp);
+    }
+    if (weekExpDisplayHero) {
+      weekExpDisplayHero.textContent = fmtMoney(weeklyExp);
+    }
+
+    // ── New C2 Hero Banner displays ──
+    const _heroBudgetBar = document.getElementById('heroBudgetBar');
+    const _heroSpentLabel = document.getElementById('heroSpentLabel');
+    const _heroPctLabel = document.getElementById('heroPctLabel');
+    const _savingsDisplay = document.getElementById('savingsDisplay');
+    const _totalSpentDisplay = document.getElementById('totalSpentDisplay');
+    const _weekBudgetMiniDisplay = document.getElementById('weekBudgetMiniDisplay');
+    const _weekBudgetBar = document.getElementById('weekBudgetBar');
+    const _weekSpentLabel = document.getElementById('weekSpentLabel');
+    const _weekPctLabel = document.getElementById('weekPctLabel');
+
+    if (_heroBudgetBar || _heroSpentLabel || _heroPctLabel || _savingsDisplay || _totalSpentDisplay || _weekBudgetMiniDisplay) {
+      const _pct = budget > 0 ? Math.min(100, Math.round((monthExp / budget) * 100)) : 0;
+      if (_heroBudgetBar) _heroBudgetBar.style.width = _pct + '%';
+      if (_heroSpentLabel) _heroSpentLabel.textContent = fmtMoney(monthExp) + ' spent';
+      if (_heroPctLabel) _heroPctLabel.textContent = _pct + '% used';
+      if (_savingsDisplay) {
+        _savingsDisplay.textContent = fmtMoney(monthBudgetRemain);
+        _savingsDisplay.classList.toggle("negative", monthBudgetRemain < 0);
+      }
+      if (_totalSpentDisplay) {
+        let lifetimeSpent = 0;
+        for (const items of Object.values(entriesByDay)) {
+          items.forEach(it => { if (it.type === "expense") lifetimeSpent += it.amount; });
+        }
+        _totalSpentDisplay.textContent = fmtMoney(lifetimeSpent);
+      }
+      if (_weekBudgetMiniDisplay) {
+        _weekBudgetMiniDisplay.textContent = weeklyBudget ? fmtMoney(weekBudgetRemain) : '—';
+        _weekBudgetMiniDisplay.classList.toggle("negative", weekBudgetRemain < 0);
+      }
+      const _weekPct = weeklyBudget > 0 ? Math.min(100, Math.round((weeklyExp / weeklyBudget) * 100)) : 0;
+      if (_weekBudgetBar) _weekBudgetBar.style.width = _weekPct + '%';
+      if (_weekSpentLabel) _weekSpentLabel.textContent = fmtMoney(weeklyExp) + ' spent';
+      if (_weekPctLabel) _weekPctLabel.textContent = _weekPct + '% used';
+    }
+  }
+
+  function sumMonthExpenses(entries, year, month) {
+    let sum = 0;
+    const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
+    for (const [date, items] of Object.entries(entries)) {
+      if (date.startsWith(prefix)) {
+        items.forEach(it => { if (it.type === "expense") sum += it.amount; });
+      }
+    }
+    return sum;
+  }
+
+  function sumMonthGains(entries, year, month) {
+    let sum = 0;
+    const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
+    for (const [date, items] of Object.entries(entries)) {
+      if (date.startsWith(prefix)) {
+        items.forEach(it => { if (it.type === "gain") sum += it.amount; });
+      }
+    }
+    return sum;
+  }
+
+  function updateChart() {
+    const chartEl = document.getElementById("categoryChart");
+    if (!chartEl) return;
+    const ctx = chartEl.getContext("2d");
+    if (chart) {
+      chart.destroy();
+      chart = null;
+    }
+
+    if (typeof Chart === "undefined") {
+      console.warn("Chart.js not loaded. Skipping chart rendering.");
+      renderWeeklyBreakdown();
+      return;
+    }
+
+    try {
+      if (currentChartType === "pie") {
+        renderPieChart(ctx);
+      } else {
+        renderTrendChart(ctx);
+      }
+    } catch (err) {
+      console.error("Error rendering chart:", err);
+    }
+    
+    // Always render weekly breakdown regardless of chart success
+    renderWeeklyBreakdown();
+  }
+
+  function renderPieChart(ctx) {
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
+    const prefix = `${y}-${String(m + 1).padStart(2, "0")}-`;
+
+    const totals = {};
+    for (const [date, items] of Object.entries(entriesByDay)) {
+      if (date.startsWith(prefix)) {
+        items.forEach(it => {
+          if (it.type === "expense") {
+            totals[it.category] = (totals[it.category] || 0) + it.amount;
+          }
+        });
+      }
+    }
+
+    const labels = Object.keys(totals);
+    const data = Object.values(totals);
+
+    if (labels.length === 0) return;
+
+    chart = new Chart(ctx, {
+      type: "pie",
+      plugins: [ChartDataLabels],
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: ["#7c5cff", "#5ae4ff", "#ff4d6d", "#2dd4bf", "#facc15", "#8b5cf6", "#ec4899", "#3b82f6"]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "bottom", labels: { color: "#fff" } },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const val = context.parsed;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const pct = ((val / total) * 100).toFixed(1) + "%";
+                return ` ${context.label}: ${fmtMoney(val)} (${pct})`;
+              }
+            }
+          },
+          datalabels: {
+            color: '#fff',
+            formatter: (value, ctx) => {
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const pct = ((value / total) * 100).toFixed(1) + "%";
+              return pct;
+            },
+            font: { weight: 'bold' }
+          }
+        }
+      }
+    });
+  }
+
+  function renderTrendChart(ctx) {
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    const labels = Array.from({ length: lastDay }, (_, i) => String(i + 1));
+    
+    const datasets = [];
+    const metric = currentChartMetric;
+
+    // Build data arrays
+    const dailyExpenses = new Array(lastDay).fill(0);
+    const dailyGains = new Array(lastDay).fill(0);
+    
+    for (let d = 1; d <= lastDay; d++) {
+      const dIso = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const items = entriesByDay[dIso] || [];
+      items.forEach(it => {
+        if (it.type === "expense") dailyExpenses[d - 1] += it.amount;
+        else if (it.type === "gain") dailyGains[d - 1] += it.amount;
+      });
+    }
+
+    // Cumulative sums
+    const cumExpenses = [];
+    const cumGains = [];
+    const cumBalance = [];
+    let curExp = 0, curGain = 0;
+    
+    for (let i = 0; i < lastDay; i++) {
+      curExp += dailyExpenses[i];
+      curGain += dailyGains[i];
+      cumExpenses.push(curExp);
+      cumGains.push(curGain);
+      cumBalance.push((salary || 0) + curGain - curExp);
+    }
+
+    const colors = {
+      expense: "#ff4d6d",
+      gain: "#2dd4bf",
+      budget: "#facc15",
+      balance: "#7c5cff"
+    };
+
+    if (metric === "expense" || metric === "all") {
+      datasets.push({
+        label: "Daily Expense",
+        data: dailyExpenses,
+        borderColor: colors.expense,
+        backgroundColor: colors.expense + "33",
+        fill: true,
+        tension: 0.1
+      });
+    }
+    if (metric === "gain" || metric === "all") {
+      datasets.push({
+        label: "Daily Gain",
+        data: dailyGains,
+        borderColor: colors.gain,
+        backgroundColor: colors.gain + "33",
+        fill: true,
+        tension: 0.1
+      });
+    }
+    if (metric === "budget" || metric === "all") {
+      const cumBudgetRemaining = cumExpenses.map((exp, i) => (budget || 0) + cumGains[i] - exp);
+      datasets.push({
+        label: "Remaining Budget",
+        data: cumBudgetRemaining,
+        borderColor: colors.budget,
+        backgroundColor: colors.budget + "33",
+        fill: true,
+        tension: 0.3
+      });
+    }
+    if (metric === "balance" || metric === "all") {
+      datasets.push({
+        label: "Remaining Balance",
+        data: cumBalance,
+        borderColor: colors.balance,
+        backgroundColor: colors.balance + "33",
+        fill: true,
+        tension: 0.3
+      });
+    }
+
+    chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#aaa" } },
+          y: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#aaa", callback: value => "₱" + value.toLocaleString() } }
+        },
+        plugins: {
+          legend: { position: "top", labels: { color: "#fff" } },
+          tooltip: {
+            callbacks: {
+              label: (context) => ` ${context.dataset.label}: ${fmtMoney(context.parsed.y)}`
+            }
+          },
+          datalabels: { display: false }
+        }
+      }
+    });
+  }
+
+  function renderWeeklyBreakdown() {
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
+    const monthName = viewDate.toLocaleString(undefined, { month: "short" });
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    
+    if (activeMonthBadge) {
+      activeMonthBadge.textContent = viewDate.toLocaleString(undefined, { month: "long" });
+    }
+
+    weeklyBreakdownList.innerHTML = "";
+    
+    // Define weeks
+    const weeks = [
+      { start: 1, end: 7, label: "Week 1" },
+      { start: 8, end: 14, label: "Week 2" },
+      { start: 15, end: 21, label: "Week 3" },
+      { start: 22, end: 28, label: "Week 4" },
+      { start: 29, end: lastDay, label: "Week 5" }
+    ].filter(w => w.start <= lastDay);
+
+    // Calculate totals
+    let monthlyExp = 0;
+    let monthlyGain = 0;
+    const weekTotals = [];
+
+    // First pass: get all week totals
+    weeks.forEach(w => {
+      let weekExp = 0;
+      for (let d = w.start; d <= w.end; d++) {
+        const dIso = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        const items = entriesByDay[dIso] || [];
+        items.forEach(it => { 
+          if (it.type === "expense") weekExp += it.amount; 
+          else if (it.type === "gain") monthlyGain += it.amount;
+        });
+      }
+      weekTotals.push(weekExp);
+      monthlyExp += weekExp;
+    });
+
+    const avgWeek = monthlyExp / weekTotals.length || 0;
+
+    // Second pass: render
+    weeks.forEach((w, idx) => {
+      const exp = weekTotals[idx];
+      const diff = avgWeek > 0 ? ((exp - avgWeek) / avgWeek) * 100 : 0;
+      
+      let changeClass = "neutral";
+      let changeText = "at avg";
+      if (diff > 1) {
+        changeClass = "up";
+        changeText = `+${diff.toFixed(0)}% vs avg`;
+      } else if (diff < -1) {
+        changeClass = "down";
+        changeText = `${diff.toFixed(0)}% vs avg`;
+      }
+
+      const item = document.createElement("div");
+      item.className = "weekly-item";
+      item.innerHTML = `
+        <div class="weekly-badge">${String(idx + 1).padStart(2, '0')}</div>
+        <div class="weekly-info">
+          <span class="weekly-label">${w.label}</span>
+          <span class="weekly-dates">${monthName} ${String(w.start).padStart(2, '0')} - ${monthName} ${String(w.end).padStart(2, '0')}</span>
+        </div>
+        <div class="weekly-stats">
+          <span class="weekly-amount">${fmtMoney(exp)}</span>
+          <span class="weekly-change ${changeClass}">${changeText}</span>
+        </div>
+      `;
+      weeklyBreakdownList.appendChild(item);
+    });
+
+    // Savings Rate
+    const totalIncome = (salary || 0) + monthlyGain;
+    const savings = totalIncome - monthlyExp;
+    const rate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
+
+    if (savingsRateVal) {
+      savingsRateVal.textContent = (rate > 0 ? rate.toFixed(1) : "0") + "%";
+      savingsRateVal.style.color = "#ffffff";
+    }
+
+    updateFinalSummary(monthlyExp, y, m);
+  }
+
+  function updateRecentTransactions() {
+    const listEl = document.getElementById("recentTransactionsList");
+    const avgEl = document.getElementById("dailyAvgVal");
+    const badgeEl = document.getElementById("currentMonthBadge");
+    if (!listEl) return;
+
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
+    const monthName = viewDate.toLocaleString(undefined, { month: "long" }).toUpperCase();
+    if (badgeEl) badgeEl.textContent = monthName;
+
+    const prefix = `${y}-${String(m + 1).padStart(2, "0")}-`;
+    const allRecent = [];
+    const spendingDays = new Set();
+    let monthTotalExp = 0;
+
+    for (const [date, items] of Object.entries(entriesByDay)) {
+      if (date.startsWith(prefix)) {
+        let hasDayExpense = false;
+        items.forEach(it => {
+          if (it.type === "expense") {
+            monthTotalExp += it.amount;
+            allRecent.push({ ...it, date });
+            hasDayExpense = true;
+          }
+        });
+        if (hasDayExpense) spendingDays.add(date);
+      }
+    }
+
+    // Daily Average Calculation (Days with spending only)
+    const dailyAvg = spendingDays.size > 0 ? (monthTotalExp / spendingDays.size) : 0;
+    if (avgEl) avgEl.textContent = fmtMoney(dailyAvg);
+
+    // Sort by timestamp or date descending
+    allRecent.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    const latest = allRecent.slice(0, 5);
+
+    const EMOJIS = {
+      "Food": "🍔", "Transport": "🚗", "Rent": "🏠", "Bills": "💳",
+      "Entertainment": "🎬", "Health": "🏥", "Salary": "💰", "General": "📦", "Other": "📦"
+    };
+
+    listEl.innerHTML = latest.map(it => {
+      const emoji = EMOJIS[it.category] || "💸";
+      const diff = dailyAvg > 0 ? ((it.amount - dailyAvg) / dailyAvg) * 100 : 0;
+      const diffText = diff > 0 ? `+${diff.toFixed(0)}% vs avg` : `${diff.toFixed(0)}% vs avg`;
+      const diffClass = diff > 0 ? "up" : (diff < 0 ? "down" : "neutral");
+      
+      const dateObj = new Date(it.date);
+      const dateStr = dateObj.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric" });
+
+      return `
+        <div class="transaction-item">
+          <div class="transaction-icon-box">${emoji}</div>
+          <div class="transaction-info">
+            <span class="transaction-category">${it.category}</span>
+            <span class="transaction-label">${it.label}</span>
+            <span class="transaction-date">${dateStr}</span>
+          </div>
+          <div class="transaction-stats">
+            <span class="transaction-amount expense">-${fmtMoney(it.amount)}</span>
+            <span class="transaction-comparison ${diffClass}">${diffText}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    if (latest.length === 0) {
+      listEl.innerHTML = `<p class="card-p" style="text-align:center; opacity:0.6;">No recent transactions.</p>`;
+    }
+  }
+
+  function updateFinalSummary(currentTotal, y, m) {
+    if (!finalSummaryCard) return;
+
+    // Previous Month Total
+    const prevDate = new Date(y, m - 1, 1);
+    const prevY = prevDate.getFullYear();
+    const prevM = prevDate.getMonth();
+    const prevTotal = sumMonthExpenses(entriesByDay, prevY, prevM);
+
+    summaryMonthName.textContent = viewDate.toLocaleString(undefined, { month: "long", year: "numeric" });
+    summaryTotalVal.textContent = new Intl.NumberFormat("en-US").format(Math.floor(currentTotal));
+    
+    // Check for decimals (if any)
+    const decimals = (currentTotal % 1).toFixed(2).substring(2);
+    const decimalEl = finalSummaryCard.querySelector(".summary-decimal");
+    if (decimalEl) decimalEl.textContent = "." + decimals;
+
+    // Trend Calculation
+    const diff = currentTotal - prevTotal;
+    const percent = prevTotal > 0 ? (diff / prevTotal) * 100 : 0;
+
+    summaryTrendBadge.className = "trend-badge";
+    if (diff > 0) {
+      summaryTrendBadge.classList.add("up");
+    } else if (diff < 0) {
+      summaryTrendBadge.classList.add("down");
+    } else {
+      summaryTrendBadge.classList.add("neutral");
+    }
+
+    updateTrendBadgeText(diff, percent);
+    updateOfflineSummary(currentTotal, y, m);
+
+    // Budget Warning Glow
+    finalSummaryCard.classList.remove("budget-warning", "budget-critical");
+    if (budget > 0) {
+      const usage = currentTotal / budget;
+      if (usage >= 1) {
+        finalSummaryCard.classList.add("budget-critical");
+      } else if (usage >= 0.8) {
+        finalSummaryCard.classList.add("budget-warning");
+      }
+    }
+  }
+
+  function updateTrendBadgeText(diff, percent) {
+    if (badgeMode === "percent") {
+      summaryTrendText.textContent = `${Math.abs(percent).toFixed(1)}% ${diff >= 0 ? 'Increase' : 'Decrease'} vs Last Month`;
+    } else {
+      summaryTrendText.textContent = `${fmtMoney(Math.abs(diff))} ${diff >= 0 ? 'more' : 'less'} than Last Month`;
+    }
+  }
+
+  function updateOfflineSummary(currentTotal, y, m) {
+    if (!summaryDesc) return;
+    
+    // Only update if not currently typing or loading AI summary
+    if (summaryDesc.classList.contains("is-typing") || summaryDesc.classList.contains("is-loading")) return;
+
+    const monthName = viewDate.toLocaleString(undefined, { month: "long" });
+    const budgetPct = budget > 0 ? (currentTotal / budget * 100).toFixed(1) : 0;
+    const salaryPct = salary > 0 ? (currentTotal / salary * 100).toFixed(1) : 0;
+
+    let text = `For <b>${monthName} ${y}</b>, you've spent a total of <span class="summary-highlight">${fmtMoney(currentTotal)}</span>. `;
+    
+    if (budget > 0) {
+      if (currentTotal > budget) {
+        text += `You are <b>${(currentTotal - budget).toFixed(0)}</b> over your budget (<b>${budgetPct}%</b> utilization). `;
+      } else {
+        text += `You've used <b>${budgetPct}%</b> of your <b>${fmtMoney(budget)}</b> budget. `;
+      }
+    }
+
+    if (salary > 0) {
+      text += `This accounts for <b>${salaryPct}%</b> of your monthly salary. `;
+    }
+
+    text += `<br><br><i>Click "Analyze Financials" for a deeper AI-powered breakdown and smart saving tips.</i>`;
+    summaryDesc.innerHTML = text;
+  }
+
+  function sumMonthExpenses(data, y, m) {
+    let total = 0;
+    const prefix = `${y}-${String(m + 1).padStart(2, "0")}-`;
+    for (const [date, items] of Object.entries(data)) {
+      if (date.startsWith(prefix)) {
+        items.forEach(it => { if (it.type === "expense") total += it.amount; });
+      }
+    }
+    return total;
+  }
+
+  summaryTrendBadge.addEventListener("click", () => {
+    badgeMode = badgeMode === "percent" ? "absolute" : "percent";
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
+    const currentItems = sumMonthExpenses(entriesByDay, y, m);
+    const prevDate = new Date(y, m - 1, 1);
+    const prevTotal = sumMonthExpenses(entriesByDay, prevDate.getFullYear(), prevDate.getMonth());
+    updateTrendBadgeText(currentItems - prevTotal, prevTotal > 0 ? ((currentItems - prevTotal) / prevTotal) * 100 : 0);
+  });
+
+  async function generateFinancialSummary() {
+    if (!analyzeFinalBtn || !summaryDesc) return;
+
+    analyzeFinalBtn.disabled = true;
+    analyzeFinalBtn.innerHTML = "⌛ Analyzing...";
+    summaryDesc.classList.add("is-loading");
+    summaryDesc.innerHTML = "";
+
+    try {
+      const y = viewDate.getFullYear();
+      const m = viewDate.getMonth();
+      const monthName = viewDate.toLocaleString(undefined, { month: "long" });
+      
+      // Build Data Context
+      const categoryMap = {};
+      let maxDayVal = 0;
+      let maxDayStr = "";
+      let total = 0;
+
+      const prefix = `${y}-${String(m + 1).padStart(2, "0")}-`;
+      for (const [date, items] of Object.entries(entriesByDay)) {
+        if (date.startsWith(prefix)) {
+          let daySum = 0;
+          items.forEach(it => {
+            if (it.type === "expense") {
+              total += it.amount;
+              daySum += it.amount;
+              categoryMap[it.category] = (categoryMap[it.category] || 0) + it.amount;
+            }
+          });
+          if (daySum > maxDayVal) {
+            maxDayVal = daySum;
+            maxDayStr = date;
+          }
+        }
+      }
+
+      const topCategory = Object.entries(categoryMap).sort((a, b) => b[1] - a[1])[0] || ["N/A", 0];
+      
+      const prompt = `
+        Analyze my ${monthName} ${y} financials in detail:
+        - Total Spent: ₱${total}
+        - Top Category: ${topCategory[0]} (₱${topCategory[1]})
+        - Highest Spending Day: ${maxDayStr} (₱${maxDayVal})
+        - Monthly Budget: ₱${budget || "Not set"}
+        - Monthly Salary: ₱${salary || "Not set"}
+
+        Provide a structured financial review:
+        1. Performance Summary: Include specific percentages (e.g., "% of budget utilized", "% of salary spent", and "Top category share %").
+        2. Spending Insights: Mention the impact of the highest spending day.
+        3. Smart Tips: Provide exactly 3 distinct, actionable "Smart Tips" to improve financial health for next month.
+
+        CRITICAL FORMATTING: 
+        1. Use NO markdown (no **). 
+        2. Wrap all amounts (₱), percentages (%), dates (YYYY-MM-DD), and the words "Smart Tip:" in <b> tags.
+        3. Use <br><br> to separate the summary section from the tips section.
+        4. Keep the total response under 6 sentences plus the 3 tips.
+      `;
+
+      const token = await fetchCsrfToken();
+      const res = await fetch("/api/api?action=chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": token,
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-120b",
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await res.json();
+      const result = data.content || "I couldn't analyze the data right now. Please try again later.";
+      
+      summaryDesc.classList.remove("is-loading");
+      summaryDesc.classList.add("is-typing");
+      
+      // Multi-layer formatting for robustness
+      let formattedResult = result
+        .replace(/\*\*\s*(.*?)\s*\*\*/g, '<b>$1</b>') // Robust ** bolding
+        .replace(/"(.*?)"/g, '<b>"$1"</b>')           // Bold any quoted text
+        .replace(/(₱\s*[0-9,.]+)/g, '<span class="summary-highlight">$1</span>') // Highlighting amounts
+        .replace(/(\d+%\s*)/g, '<b>$1</b>')          // Bold percentages
+        .replace(/(\d{4}-\d{2}-\d{2})/g, '<b>$1</b>'); // Bold dates
+
+      await typeSummaryHtml(summaryDesc, formattedResult);
+      summaryDesc.classList.remove("is-typing");
+
+    } catch (err) {
+      console.error(err);
+      summaryDesc.classList.remove("is-loading");
+      summaryDesc.textContent = "Error connecting to AI assistant. Ensure server is online.";
+    } finally {
+      analyzeFinalBtn.disabled = false;
+      analyzeFinalBtn.innerHTML = "<span class='ai-spark'>✨</span> Analyze Financials";
+    }
+  }
+
+  function typeSummaryHtml(element, html) {
+    return new Promise(resolve => {
+      let i = 0;
+      element.innerHTML = "";
+      const interval = setInterval(() => {
+        if (i < html.length) {
+          if (html[i] === "<") {
+            // Find end of tag
+            const end = html.indexOf(">", i);
+            if (end !== -1) {
+              i = end + 1;
+            }
+          } else {
+            i++;
+          }
+          element.innerHTML = html.substring(0, i);
+          
+          if (i >= html.length) {
+            clearInterval(interval);
+            resolve();
+          }
+        } else {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 15);
+    });
+  }
+
+  analyzeFinalBtn.addEventListener("click", () => generateFinancialSummary());
+
+  function renderCalendar() {
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
+    const monthName = viewDate.toLocaleString(undefined, { month: "long", year: "numeric" });
+    monthLabel.textContent = monthName;
+    monthSelect.value = String(m);
+
+    daysGrid.innerHTML = "";
+    const first = new Date(y, m, 1);
+    const startDay = first.getDay();
+    const gridStart = new Date(y, m, 1 - startDay);
+    const todayIso = isoDate(new Date());
+
+    const searchQuery = searchInput.value.toLowerCase();
+
+    let maxAbsNet = 0;
+    for (let i = 0; i < 42; i++) {
+        const d = new Date(gridStart);
+        d.setDate(gridStart.getDate() + i);
+        const dIso = isoDate(d);
+        let items = entriesByDay[dIso] || [];
+        if (searchQuery) {
+            items = items.filter(it =>
+                it.label.toLowerCase().includes(searchQuery) ||
+                it.category.toLowerCase().includes(searchQuery)
+            );
+        }
+        const net = items.reduce((acc, it) => acc + (it.type === "gain" ? it.amount : -it.amount), 0);
+        if (Math.abs(net) > maxAbsNet) maxAbsNet = Math.abs(net);
+    }
+
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + i);
+      const dIso = isoDate(d);
+      const inMonth = d.getMonth() === m;
+      const isToday = dIso === todayIso;
+
+      let items = entriesByDay[dIso] || [];
+      if (searchQuery) {
+        items = items.filter(it =>
+          it.label.toLowerCase().includes(searchQuery) ||
+          it.category.toLowerCase().includes(searchQuery)
+        );
+      }
+
+      const net = items.reduce((acc, it) => acc + (it.type === "gain" ? it.amount : -it.amount), 0);
+      const btn = createDayButton({ dateObj: d, inMonth, isToday, dayNet: net, maxAbsNet });
+
+      if (isClearMode && clearTargets.has(dIso)) {
+        btn.classList.add("is-clear-target");
+      }
+
+      if (searchQuery && items.length === 0) btn.style.opacity = "0.2";
+
+      daysGrid.appendChild(btn);
+    }
+    updateHeaderTotals();
+  }
+
+  function createDayButton({ dateObj, inMonth, isToday, dayNet, maxAbsNet }) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `tracker-day${inMonth ? "" : " is-out"}${isToday ? " is-today" : ""}${dayNet !== 0 ? " has-expense" : ""}`;
+    btn.dataset.date = isoDate(dateObj);
+    btn.setAttribute("role", "gridcell");
+
+    if (maxAbsNet && maxAbsNet > 0 && dayNet !== 0) {
+      const pct = (Math.abs(dayNet) / maxAbsNet) * 100;
+      const color = dayNet > 0 ? "rgba(34, 197, 94, 0.4)" : "rgba(239, 68, 68, 0.4)";
+      btn.style.background = `linear-gradient(to top, ${color} ${pct}%, transparent ${pct}%)`;
+      btn.style.backgroundSize = "100% 100%";
+    }
+
+    const top = document.createElement("div");
+    top.className = "tracker-day-top";
+    top.textContent = String(dateObj.getDate());
+
+    const bottom = document.createElement("div");
+    bottom.className = "tracker-day-bottom";
+    if (dayNet > 0) {
+      bottom.textContent = `+${fmtMoney(dayNet)}`;
+      bottom.classList.add("is-gain");
+    } else if (dayNet < 0) {
+      bottom.textContent = `-${fmtMoney(Math.abs(dayNet))}`;
+    }
+
+    btn.appendChild(top);
+    btn.appendChild(bottom);
+    return btn;
+  }
+
+  function ensureSetupState() {
+    const hasSalary = salary != null && Number.isFinite(salary);
+    salaryCard.hidden = hasSalary;
+    trackerMainLayout.hidden = !hasSalary;
+    trackerGrid.classList.toggle("is-ready", hasSalary);
+    if (hasSalary) {
+      renderCalendar();
+      updateChart();
+      updateRecentTransactions();
+    }
+  }
+
+  searchInput.addEventListener("input", () => renderCalendar());
+
+  exportBtn.addEventListener("click", () => {
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
+    const monthName = viewDate.toLocaleString(undefined, { month: "long", year: "numeric" });
+    
+    // Calculate Monthly Totals for header
+    const monthExp = sumMonthExpenses(entriesByDay, y, m);
+    const monthGain = sumMonthGains(entriesByDay, y, m);
+    const net = monthGain - monthExp;
+    const rem = salary == null ? 0 : (salary + net);
+    
+    let html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <style>
+          table { border-collapse: collapse; width: 100%; border: 1px solid #000; font-family: sans-serif; }
+          th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+          th { background-color: #f2f2f2; font-weight: bold; }
+          .summary-header { background-color: #1a1a1a; color: #ffffff; font-weight: bold; }
+          .summary-val { background-color: #f9f9f9; font-weight: bold; }
+          .date-row { background-color: #fafafa; font-weight: bold; }
+          .is-gain { color: #2dd4bf; }
+          .is-expense { color: #ff4d6d; }
+          .negative { color: #ff4d6d; }
+        </style>
+      </head>
+      <body>
+        <h2>Monthly Report: ${monthName}</h2>
+        <table>
+          <tr class="summary-header">
+            <th>Salary</th>
+            <th>Budget</th>
+            <th>Total Gains</th>
+            <th>Total Expenses</th>
+            <th>Net</th>
+            <th>Remaining Balance</th>
+          </tr>
+          <tr class="summary-val">
+            <td>${salary || 0}</td>
+            <td>${budget || 0}</td>
+            <td>${monthGain}</td>
+            <td>${monthExp}</td>
+            <td class="${net < 0 ? 'negative' : ''}">${net}</td>
+            <td class="${rem < 0 ? 'negative' : ''}">${rem}</td>
+          </tr>
+        </table>
+        <br>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Label</th>
+              <th>Category</th>
+              <th>Type</th>
+              <th>Amount (PHP)</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    for (let d = 1; d <= lastDay; d++) {
+      const dateIso = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const items = entriesByDay[dateIso] || [];
+      
+      if (items.length > 0) {
+        items.forEach((it, idx) => {
+          html += `
+            <tr>
+              ${idx === 0 ? `<td rowspan="${items.length}">${dateIso}</td>` : ''}
+              <td>${it.label}</td>
+              <td>${it.category}</td>
+              <td class="is-${it.type}">${it.type}</td>
+              <td class="is-${it.type}">${it.type === 'gain' ? '+' : '-'}${it.amount}</td>
+            </tr>
+          `;
+        });
+      } else {
+        html += `
+          <tr>
+            <td>${dateIso}</td>
+            <td colspan="3" style="color: #ccc; text-align: center;">--- No activity ---</td>
+            <td>0</td>
+          </tr>
+        `;
+      }
+    }
+    
+    html += `
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+    
+    // Use application/vnd.ms-excel so it opens in Excel directly
+    const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `report_${monthName.replace(/\s/g, "_")}.xls`;
+    a.click();
+  });
+
+  importFile.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const rows = event.target.result.split("\n").slice(1);
+      rows.forEach(row => {
+        const [date, label, cat, type, amount] = row.split(",").map(s => s?.trim().replace(/^"|"$/g, ""));
+        if (!date || !amount) return;
+        if (!entriesByDay[date]) entriesByDay[date] = [];
+        entriesByDay[date].push({
+          label: label || "Imported",
+          category: cat || "Other",
+          type: type === "gain" ? "gain" : "expense",
+          amount: Number(amount) || 0,
+          ts: Date.now()
+        });
+      });
+      saveAndRefresh();
+    };
+    reader.readAsText(file);
+  });
+
+  salaryForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const s = parseMoney(salaryInput.value);
+    const b = parseMoney(budgetInput.value);
+    
+    if (!Number.isFinite(s)) return;
+    
+    if (Number.isFinite(b) && b > s) {
+      alert("Monthly budget cannot be greater than your monthly salary.");
+      budgetInput.focus();
+      return;
+    }
+
+    salary = s;
+    budget = Number.isFinite(b) ? b : null;
+    saveSalary(s);
+    saveBudget(budget);
+    ensureSetupState();
+  });
+
+  resetBtn.addEventListener("click", async () => {
+    if (!confirm("Are you sure you want to reset everything? This will delete all local and cloud data.")) return;
+    
+    // 1. Wipe local storage
+    localStorage.removeItem(STORAGE_SALARY);
+    localStorage.removeItem(STORAGE_BUDGET);
+    localStorage.removeItem(STORAGE_ENTRIES);
+    localStorage.removeItem("tracker_sync_key");
+    
+    // 2. Wipe cloud (optional but necessary to prevent auto-restore)
+    try {
+      const token = await fetchCsrfToken();
+      const key = getSyncKey();
+      await fetch(`/api/api?action=sync${key ? `&key=${encodeURIComponent(key)}` : ''}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": token,
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ entriesByDay: {}, salary: null, budget: null })
+      });
+    } catch(e) {
+      console.log("Cloud reset failed or server offline.");
+    }
+
+    // 3. Reset internal state and refresh UI
+    entriesByDay = {};
+    salary = null;
+    budget = null;
+    saveEntries(entriesByDay);
+    saveSalary(null);
+    saveBudget(null);
+    
+    // Force a page reload to go back to setup screen
+    window.location.reload();
+  });
+
+  syncBtn.addEventListener("click", triggerSync);
+
+  logoutBtn.onclick = async () => {
+    clearAuthToken();
+    window.location.reload();
+  };
+
+  entryForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!activeDateIso) return;
+    const item = {
+      type: entryType.value,
+      amount: parseMoney(entryAmount.value),
+      label: entryLabel.value.trim(),
+      category: entryCategory.value,
+      recurring: entryRecurring.value,
+      ts: Date.now()
+    };
+    if (!item.amount || !item.label) return;
+
+    if (!entriesByDay[activeDateIso]) entriesByDay[activeDateIso] = [];
+    entriesByDay[activeDateIso].push(item);
+    
+    // Auto-populate based on frequency
+    if (item.recurring !== "none") {
+      let firstDate = new Date(activeDateIso);
+      let nextDate = new Date(activeDateIso);
+      const startMonth = firstDate.getMonth();
+      
+      // Monthly still adds 12 months, daily/weekly limited to current month
+      const count = item.recurring === "monthly" ? 12 : 31; // Safety cap
+      
+      for (let i = 1; i <= count; i++) {
+        if (item.recurring === "daily") {
+          nextDate.setDate(nextDate.getDate() + 1);
+        } else if (item.recurring === "weekly") {
+          nextDate.setDate(nextDate.getDate() + 7);
+        } else if (item.recurring === "monthly") {
+          nextDate.setMonth(nextDate.getMonth() + 1);
+        }
+        
+        // Check if we exited the current month for daily/weekly
+        if (item.recurring !== "monthly" && nextDate.getMonth() !== startMonth) {
+          break;
+        }
+
+        const iso = isoDate(nextDate);
+        if (!entriesByDay[iso]) entriesByDay[iso] = [];
+        entriesByDay[iso].push({ ...item, ts: Date.now() + i });
+      }
+    }
+
+    entryAmount.value = "";
+    entryLabel.value = "";
+    saveAndRefresh();
+    renderEntriesModal(activeDateIso);
+  });
+
+  // Wiring up navigation and calendar interaction
+  prevBtn.addEventListener("click", () => { viewDate.setMonth(viewDate.getMonth() - 1); renderCalendar(); updateChart(); });
+  nextBtn.addEventListener("click", () => { viewDate.setMonth(viewDate.getMonth() + 1); renderCalendar(); updateChart(); });
+  todayBtn.addEventListener("click", () => { viewDate = new Date(); viewDate.setDate(1); renderCalendar(); updateChart(); });
+  monthSelect.addEventListener("change", () => { viewDate.setMonth(Number(monthSelect.value)); renderCalendar(); updateChart(); });
+
+  daysGrid.addEventListener("click", (e) => {
+    const target = e.target.closest("button.tracker-day");
+    if (!target) return;
+    
+    if (isClearMode) return; // Handled by mousedown/mousemove for multi-select
+
+    const clickedIso = target.dataset.date;
+    activeDateIso = clickedIso;
+    renderEntriesModal(activeDateIso);
+    entryModal.classList.add("is-open");
+    entryAmount.focus();
+  });
+
+  daysGrid.addEventListener("mousedown", (e) => {
+    if (!isClearMode) return;
+    const target = e.target.closest("button.tracker-day");
+    if (!target) return;
+
+    isDragging = true;
+    const iso = target.dataset.date;
+    if (clearTargets.has(iso)) {
+      dragAction = "remove";
+      clearTargets.delete(iso);
+    } else {
+      dragAction = "add";
+      clearTargets.add(iso);
+    }
+    renderCalendar();
+    e.preventDefault();
+  });
+
+  daysGrid.addEventListener("mouseover", (e) => {
+    if (!isClearMode || !isDragging) return;
+    const target = e.target.closest("button.tracker-day");
+    if (!target) return;
+
+    const iso = target.dataset.date;
+    if (dragAction === "add") {
+      clearTargets.add(iso);
+    } else {
+      clearTargets.delete(iso);
+    }
+    renderCalendar();
+  });
+
+  window.addEventListener("mouseup", () => {
+    isDragging = false;
+  });
+
+  // Batch Delete Handling
+  batchDeleteOpenBtn.addEventListener("click", () => {
+    batchDeleteModal.classList.add("is-open");
+  });
+
+  batchDeleteForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const cat = batchDeleteCategory.value;
+    const amt = parseMoney(batchDeleteAmount.value);
+    const label = batchDeleteLabel.value.trim().toLowerCase();
+
+    if (!cat && !Number.isFinite(amt) && !label) {
+      alert("Please provide at least one filter.");
+      return;
+    }
+
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
+    const prefix = `${y}-${String(m + 1).padStart(2, "0")}-`;
+    let count = 0;
+
+    if (!confirm(`Are you sure you want to delete all entries in ${viewDate.toLocaleString(undefined, { month: "long" })} matching these filters?`)) return;
+
+    for (const [date, items] of Object.entries(entriesByDay)) {
+      if (date.startsWith(prefix)) {
+        const remaining = items.filter(it => {
+          const matchCat = !cat || it.category === cat;
+          const matchAmt = !Number.isFinite(amt) || it.amount === amt;
+          const matchLabel = !label || (it.label && it.label.toLowerCase().includes(label));
+          const isMatch = matchCat && matchAmt && matchLabel;
+          if (isMatch) count++;
+          return !isMatch;
+        });
+
+        if (remaining.length === 0) {
+          delete entriesByDay[date];
+        } else {
+          entriesByDay[date] = remaining;
+        }
+      }
+    }
+
+    if (count > 0) {
+      alert(`Deleted ${count} matching entries.`);
+      saveAndRefresh();
+      batchDeleteModal.classList.remove("is-open");
+      // Reset form
+      batchDeleteForm.reset();
+    } else {
+      alert("No matching entries found in the current month.");
+    }
+  });
+
+  batchDeleteAmount.addEventListener("input", formatInputWithCommas);
+
+  document.querySelectorAll("[data-close-batch]").forEach(el => el.onclick = () => batchDeleteModal.classList.remove("is-open"));
+
+  function renderEntriesModal(dateIso) {
+    modalDateTitle.textContent = `Entries for ${dateIso}`;
+    const items = entriesByDay[dateIso] || [];
+    modalDaySummary.textContent = `Total Net: ${fmtMoney(items.reduce((acc, it) => acc + (it.type === "gain" ? it.amount : -it.amount), 0))}`;
+    entryList.innerHTML = "";
+    items.forEach((it, idx) => {
+      const row = document.createElement("div");
+      row.className = "tracker-entry";
+      row.innerHTML = `
+        <div class="tracker-entry-main">
+          <div class="tracker-entry-label">${it.label} ${it.recurring && it.recurring !== "none" ? "🔄" : ""}</div>
+          <div class="tracker-entry-meta">${it.category} · ${it.type}${it.recurring && it.recurring !== "none" ? ` · ${it.recurring}` : ""}</div>
+        </div>
+        <div class="tracker-entry-actions">
+           <div class="tracker-entry-amt ${it.type}">${it.type === "gain" ? "+" : "-"}${fmtMoney(it.amount)}</div>
+           <button class="tracker-icon-btn" onclick="deleteEntry('${dateIso}', ${idx})">🗑</button>
+        </div>
+      `;
+      entryList.appendChild(row);
+    });
+  }
+
+  window.deleteEntry = (dateIso, idx) => {
+    entriesByDay[dateIso].splice(idx, 1);
+    if (entriesByDay[dateIso].length === 0) delete entriesByDay[dateIso];
+    saveAndRefresh();
+    renderEntriesModal(dateIso);
+  };
+
+  // Formatting input fields in real-time
+  function formatInputWithCommas(e) {
+    const el = e.target;
+    let cursor = el.selectionStart;
+    const oldLen = el.value.length;
+    
+    // Remove non-digits/decimals
+    let val = el.value.replace(/[^0-9.]/g, "");
+    if (!val) {
+      el.value = "";
+      return;
+    }
+    
+    // Split decimal
+    const parts = val.split(".");
+    if (parts.length > 2) parts.length = 2; // only one decimal point
+    
+    // Format integer part
+    parts[0] = new Intl.NumberFormat("en-US").format(parts[0].replace(/,/g, ""));
+    const newVal = parts.join(".");
+    el.value = newVal;
+    
+    // Adjust cursor position
+    const newLen = newVal.length;
+    cursor = cursor + (newLen - oldLen);
+    el.setSelectionRange(cursor, cursor);
+  }
+
+  salaryInput.addEventListener("input", formatInputWithCommas);
+  budgetInput.addEventListener("input", formatInputWithCommas);
+  entryAmount.addEventListener("input", formatInputWithCommas);
+
+  // Close modals
+  document.querySelectorAll("[data-close]").forEach(el => el.onclick = () => entryModal.classList.remove("is-open"));
+
+  const monthNamesInit = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleString(undefined, { month: "long" }));
+  monthSelect.innerHTML = monthNamesInit.map((n, i) => `<option value="${i}">${n}</option>`).join("");
+
+  // Clear Mode Logic
+  function exitClearMode() {
+    isClearMode = false;
+    clearTargets.clear();
+    daysGrid.classList.remove("is-selecting-clear");
+    clearModeBtns.style.display = "none";
+    clearModeBtn.style.display = "inline-block";
+    renderCalendar();
+  }
+
+  clearModeBtn.addEventListener("click", () => {
+    isClearMode = true;
+    daysGrid.classList.add("is-selecting-clear");
+    clearModeBtn.style.display = "none";
+    clearModeBtns.style.display = "flex";
+  });
+
+  clearCancelBtn.addEventListener("click", exitClearMode);
+
+  clearConfirmBtn.addEventListener("click", () => {
+    if (clearTargets.size === 0) {
+      alert("Please select at least one day to clear.");
+      return;
+    }
+    const count = clearTargets.size;
+    if (confirm(`Remove all entries for the ${count} selected day(s)?`)) {
+      clearTargets.forEach(iso => delete entriesByDay[iso]);
+      saveAndRefresh();
+      exitClearMode();
+    }
+  });
+  
+  // AI Financial Assistant Integration
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (typeof text === "string") node.textContent = text;
+    return node;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+  }
+
+  function renderChatText(text) {
+    if (typeof marked !== "undefined" && marked.parse) {
+      return marked.parse(text);
+    }
+    // Fallback if marked is not loaded
+    let s = escapeHtml(text);
+    s = s.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    return s.replace(/\n/g, "<br>");
+  }
+
+  function initMobileNav() {
+    const toggle = document.querySelector(".nav-toggle");
+    const nav = document.querySelector(".site-nav");
+    const navItems = nav.querySelectorAll("button, a, input");
+
+    if (!toggle || !nav) return;
+
+    toggle.addEventListener("click", () => {
+      const isOpen = nav.classList.toggle("is-open");
+      toggle.setAttribute("aria-expanded", String(isOpen));
+      document.body.style.overflow = isOpen ? "hidden" : "";
+
+      const spans = toggle.querySelectorAll("span");
+      if (isOpen) {
+        if (spans[0]) spans[0].style.transform = "translateY(6px) rotate(45deg)";
+        if (spans[1]) spans[1].style.opacity = "0";
+        if (spans[2]) spans[2].style.transform = "translateY(-6px) rotate(-45deg)";
+      } else {
+        if (spans[0]) spans[0].style.transform = "";
+        if (spans[1]) spans[1].style.opacity = "1";
+        if (spans[2]) spans[2].style.transform = "";
+      }
+    });
+
+    navItems.forEach(item => {
+      item.addEventListener("click", () => {
+        if (item.id === "syncKeyInput") return;
+        nav.classList.remove("is-open");
+        toggle.setAttribute("aria-expanded", "false");
+        document.body.style.overflow = "";
+
+        const spans = toggle.querySelectorAll("span");
+        if (spans[0]) spans[0].style.transform = "";
+        if (spans[1]) spans[1].style.opacity = "1";
+        if (spans[2]) spans[2].style.transform = "";
+      });
+    });
+  }
+
+  initMobileNav();
+
+  function initFinancialChatbot() {
+    const fab = document.querySelector(".chatbot .chatbot-fab");
+    const panel = document.getElementById("chatbot-panel");
+    const closeBtn = document.querySelector("#chatbot-panel .chatbot-close");
+    const form = document.querySelector("#chatbot-panel .chatbot-form");
+    const input = document.querySelector("#chatbot-panel .chatbot-input");
+    const log = document.querySelector("#chatbot-panel .chatbot-messages");
+
+    console.log("Chatbot elements:", { fab: !!fab, panel: !!panel, closeBtn: !!closeBtn, form: !!form, input: !!input, log: !!log });
+
+    if (!fab || !panel || !closeBtn || !form || !input || !log) {
+      console.warn("Chatbot initialization skipped - missing elements");
+      return;
+    }
+
+    const apiUrl = "/api/api?action=chat";
+    const messages = [];
+
+    function buildFinancialContext() {
+      const parts = [
+        `Today's Date: ${new Date().toISOString().split('T')[0]}`,
+        `Currency: Philippine Peso (₱)`,
+        `Monthly Salary: ₱${salary || "Not set"}`,
+        `Monthly Budget: ₱${budget || "Not set"}`,
+        "RECENT TRANSACTIONS (Last 60 days):"
+      ];
+      
+      const sortedDates = Object.keys(entriesByDay).sort().reverse().slice(0, 60);
+      sortedDates.forEach(date => {
+        entriesByDay[date].forEach(it => {
+          const freqInfo = (it.recurring && it.recurring !== 'none') ? ` (${it.recurring})` : '';
+          parts.push(`- ${date}: ${it.type === 'gain' ? '+' : '-'}${it.amount} PHP [${it.category}] "${it.label}"${freqInfo}`);
+        });
+      });
+      
+      return parts.join("\n").slice(0, 8000); // Guard rails
+    }
+
+    const systemPrompt = {
+      role: "system",
+      content: "You are the official Financial Assistant for the Xpense platform. " +
+               "Your ONLY purpose is to discuss the Xpense website features and provide financial advice/analysis based on the user's data. " +
+               "STRICT RULE: Do NOT answer questions about unrelated topics (e.g., general knowledge, jokes, other websites, or unrelated programming). " +
+               "If a user asks something non-financial or unrelated to Xpense, politely decline and offer to help with their expenses or budget instead. " +
+               "The currency is Philippine Peso (₱). Use the provided spending data to answer user questions. Be precise with calculations. " +
+               "ALWAYS use the ₱ symbol when mentioning money. If they ask about spending, sum up the relevant categories/dates from the log. " +
+               "If they are over budget, give friendly advice. Keep responses concise and use bold for numbers.\n\n" +
+               "USER FINANCIAL DATA:\n" + buildFinancialContext()
+    };
+    messages.push(systemPrompt);
+
+    function setOpen(open) {
+      console.log("setOpen called with:", open);
+      panel.hidden = !open;
+      fab.setAttribute("aria-expanded", String(open));
+      if (open) { input.focus(); log.scrollTop = log.scrollHeight; }
+    }
+
+    function addMessage(role, text) {
+      messages.push({ role, content: text });
+      const row = el("div", `chatbot-row ${role}`);
+      const bubble = el("div", "chatbot-bubble");
+      bubble.innerHTML = renderChatText(text);
+      row.appendChild(bubble);
+      log.appendChild(row);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    fab.addEventListener("click", (e) => {
+      console.log("FAB clicked");
+      e.stopPropagation();
+      setOpen(panel.hidden);
+    });
+    
+    closeBtn.addEventListener("click", (e) => {
+      console.log("Close button clicked");
+      e.stopPropagation();
+      setOpen(false);
+    });
+
+    addMessage("assistant", "Hi! I'm your Financial Assistant. I've analyzed your spending logs in ₱. How can I help you today?");
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      
+      input.value = "";
+      input.disabled = true;
+      addMessage("user", text);
+
+      try {
+        // Refresh context in system prompt with latest data before sending
+        messages[0].content = "You are the official Financial Assistant for Xpense. You ONLY discuss Xpense features and finance. USER FINANCIAL DATA:\n" + buildFinancialContext();
+
+        const token = await fetchCsrfToken();
+        const r = await fetch("/api/api?action=chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": token,
+            ...getAuthHeaders()
+          },
+          body: JSON.stringify({ model: "openai/gpt-oss-120b", messages })
+        });
+        const data = await r.json();
+        addMessage("assistant", data.content || "Sorry, I couldn't process that.");
+      } catch (err) {
+        addMessage("assistant", "Connection error. Ensure the server is running.");
+      } finally {
+        input.disabled = false;
+        input.focus();
+      }
+    };
+  }
+
+  initFinancialChatbot();
+  editBudgetBtn.onclick = () => {
+    salaryInput.value = salary || "";
+    budgetInput.value = budget || "";
+    weeklyBudgetInput.value = weeklyBudget || "";
+    salaryCard.hidden = false;
+    trackerMainLayout.hidden = true;
+    trackerGrid.classList.remove("is-ready");
+    salaryInput.focus();
+  };
+
+  ensureSetupState();
+}
+
+main();
+

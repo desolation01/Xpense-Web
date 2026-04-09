@@ -1,0 +1,135 @@
+/* ==========================================================================
+   DESIGN TOKENS — Xpense Portfolio
+   Direction: Dark OLED — developer tool, minimal, high contrast
+   Palette: Deep black (#0F172A), slate surfaces (#1E293B), green accent (#22C55E)
+   Fonts: Inter (all weights)
+   ========================================================================== */
+
+:root {
+  /* ── Colors ── */
+  --color-primary: #1E293B;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #334155;
+  --color-secondary-foreground: #F8FAFC;
+  --color-accent: #22C55E;
+  --color-accent-foreground: #0F172A;
+  --color-background: #0F172A;
+  --color-background-foreground: #F8FAFC;
+  --color-surface: rgba(30, 41, 59, 0.88);
+  --color-surface-foreground: #F8FAFC;
+  --color-surface-strong: #1B2336;
+  --color-muted: #272F42;
+  --color-muted-foreground: #94A3B8;
+  --color-border: rgba(71, 85, 105, 0.4);
+  --color-border-strong: #475569;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #ffffff;
+  --color-success: #22C55E;
+  --color-success-foreground: #0F172A;
+  --color-warning: #F59E0B;
+  --color-warning-foreground: #0F172A;
+  --color-grid: rgba(34, 197, 94, 0.04);
+  --color-glow: rgba(34, 197, 94, 0.08);
+  --color-glow-secondary: rgba(30, 41, 59, 0.6);
+
+  /* ── Spacing ── */
+  --space-4: 0.25rem;
+  --space-8: 0.5rem;
+  --space-16: 1rem;
+  --space-24: 1.5rem;
+  --space-32: 2rem;
+  --space-48: 3rem;
+  --space-64: 4rem;
+  --space-96: 6rem;
+
+  /* ── Radius ── */
+  --radius-none: 0;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 999px;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 3px rgba(26, 26, 46, 0.04), 0 4px 12px rgba(26, 26, 46, 0.06);
+  --shadow-md: 0 4px 16px rgba(26, 26, 46, 0.06), 0 12px 32px rgba(26, 26, 46, 0.08);
+  --shadow-lg: 0 8px 24px rgba(26, 26, 46, 0.08), 0 24px 56px rgba(26, 26, 46, 0.10);
+  --shadow-xl: 0 16px 48px rgba(26, 26, 46, 0.12), 0 40px 88px rgba(26, 26, 46, 0.14);
+  --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+
+  /* ── Typography ── */
+  --font-display: "Inter", "Segoe UI", sans-serif;
+  --font-body: "Inter", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.5rem;
+  --text-5xl: 3.5rem;
+  --text-6xl: 4.5rem;
+
+  /* ── Z-Index ── */
+  --z-base: 1;
+  --z-dropdown: 50;
+  --z-sticky: 100;
+  --z-overlay: 200;
+  --z-modal: 300;
+  --z-popover: 350;
+  --z-toast: 400;
+  --z-tooltip: 450;
+
+  /* ── Transitions ── */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-emphasis: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ── Breakpoints ── */
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+  --breakpoint-2xl: 96rem;
+
+  --container-max: 76rem;
+}
+
+/* ── Light Mode (toggle override) ── */
+[data-theme="light"] {
+  --color-primary: #18181B;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #3F3F46;
+  --color-secondary-foreground: #ffffff;
+  --color-accent: #2563EB;
+  --color-accent-foreground: #ffffff;
+  --color-background: #FAFAFA;
+  --color-background-foreground: #09090B;
+  --color-surface: rgba(255, 255, 255, 0.88);
+  --color-surface-foreground: #09090B;
+  --color-surface-strong: #ffffff;
+  --color-muted: #E8ECF0;
+  --color-muted-foreground: #64748B;
+  --color-border: rgba(9, 9, 11, 0.08);
+  --color-border-strong: #E4E4E7;
+  --color-destructive: #DC2626;
+  --color-destructive-foreground: #ffffff;
+  --color-success: #16A34A;
+  --color-success-foreground: #ffffff;
+  --color-warning: #D97706;
+  --color-warning-foreground: #ffffff;
+  --color-grid: rgba(37, 99, 235, 0.05);
+  --color-glow: rgba(37, 99, 235, 0.08);
+  --color-glow-secondary: rgba(63, 63, 70, 0.06);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 12px 32px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08), 0 24px 56px rgba(0, 0, 0, 0.10);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.12), 0 40px 88px rgba(0, 0, 0, 0.14);
+  --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}

@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Manual | Expense Tracker</title>
+    <!-- External Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #0a0c12;
+            --card: #161b22;
+            --text: #ffffff;
+            --muted: #8b949e;
+            --primary: #7c5cff;
+            --primary-glow: rgba(124, 92, 255, 0.3);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            line-height: 1.6;
+            scroll-behavior: smooth;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 5rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 850;
+            letter-spacing: -0.05em;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, white, var(--primary));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 1.25rem;
+            max-width: 650px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Feature Gallery */
+        .gallery {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 2rem;
+            margin-bottom: 4rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .gallery-title {
+            font-weight: 800;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .slider {
+            position: relative;
+            overflow: hidden;
+            border-radius: 16px;
+            aspect-ratio: 16/9;
+            background: #000;
+        }
+
+        .slider img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: none;
+            cursor: zoom-in;
+        }
+
+        .slider img.active {
+            display: block;
+        }
+
+        .slider-controls {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .slide-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .slide-btn:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: 4rem;
+        }
+
+        .section-h {
+            font-size: 1.85rem;
+            font-weight: 850;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #fff;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: transform 0.3s;
+        }
+
+        .feat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+
+        .feat-card h3 {
+            margin-top: 0;
+            color: var(--primary);
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .feat-card p {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1.05rem;
+            margin-bottom: 0;
+        }
+
+        .tip {
+            background: rgba(124, 92, 255, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: 1.25rem;
+            border-radius: 0 12px 12px 0;
+            margin: 2rem 0;
+        }
+
+        .tip-label {
+            font-weight: 800;
+            color: var(--primary);
+            display: block;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+        }
+
+        footer {
+            text-align: center;
+            border-top: 1px solid var(--border);
+            padding-top: 3rem;
+            margin-top: 4rem;
+            color: var(--muted);
+        }
+
+        .print-btn {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .container {
+                padding-top: 2rem;
+            }
+        }
+
+        @media print {
+
+            .print-btn,
+            .slider-controls {
+                display: none;
+            }
+
+            .slider img {
+                display: block;
+                break-inside: avoid;
+                margin-bottom: 2rem;
+                page-break-after: always;
+            }
+
+            body {
+                background: #fff;
+                color: #000;
+            }
+
+            .container {
+                max-width: 100%;
+                padding: 0;
+            }
+        }
+
+        .manual-nav {
+            text-align: left;
+            margin-bottom: 2rem;
+        }
+
+        .back-btn {
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #slideDesc {
+            margin-top: 1rem;
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .footer-note {
+            margin-top: 1.5rem;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="manual-nav">
+                <a href="expense-tracker" class="slide-btn back-btn">
+                    <span>←</span> Go Back
+                </a>
+            </div>
+            <h1>A Simple Guide to Xpense</h1>
+            <p class="subtitle">Mastering your money doesn't have to be hard. Let’s walk through the basics together,
+                step-by-step.</p>
+        </header>
+
+        <section class="gallery">
+            <div class="gallery-header">
+                <span class="gallery-title">📸 Quick Peek</span>
+                <div class="slider-controls">
+                    <button class="slide-btn" onclick="window.moveSlide(-1)">Prev</button>
+                    <button class="slide-btn" onclick="window.moveSlide(1)">Next</button>
+                </div>
+            </div>
+            <div class="slider" id="slider">
+                <img src="assets/docs/dash.png?v=2" class="active" alt="Dashboard Overview">
+                <img src="assets/docs/sidebar.png?v=2" alt="Sidebar Details">
+                <img src="assets/docs/trend.png?v=2" alt="Trend Charts">
+                <img src="assets/docs/pie.png?v=2" alt="Category Breakdown">
+                <img src="assets/docs/summary.png?v=2" alt="AI Analysis">
+                <img src="assets/docs/modal.png?v=2" alt="Adding Entries">
+                <img src="assets/docs/chat.png?v=2" alt="Financial Assistant (Chatbot)">
+            </div>
+            <p id="slideDesc">Dashboard Overview</p>
+        </section>
+
+        <section class="section">
+            <h2 class="section-h">⭐ Step 1: Your First 60 Seconds</h2>
+            <div class="card-grid">
+                <div class="feat-card">
+                    <h3>Setting Your Starting Point</h3>
+                    <p>When you first log in, you'll see a card asking for your <b>Monthly Salary</b>. Think of this as
+                        your total "piggy bank" for the month. This helps the app calculate how much you have left after
+                        your bills.</p>
+                </div>
+                <div class="feat-card">
+                    <h3>Setting a Goal</h3>
+                    <p>You can also set a <b>Monthly Budget</b>. This is your "target spend"—it's like a friendly
+                        reminder to try and stay below a certain amount each month.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-h">📅 Step 2: Logging Your First Purchase</h2>
+            <div class="card-grid">
+                <div class="feat-card">
+                    <h3>Click & Add</h3>
+                    <p>Simply click on <b>ANY DAY</b> on the calendar. A small window will pop up—just type in what
+                        you bought and how much it cost. That's it! No complex menus required.</p>
+                </div>
+                <div class="feat-card">
+                    <h3>Treats vs. Earnings</h3>
+                    <p>By default, things you buy are <b>Expenses</b> (Red). If you get paid or receive a gift, just
+                        switch the tab to <b>Gain</b> (Green) to add money back to your balance.</p>
+                </div>
+                <div class="feat-card">
+                    <h3>Repeating Bills</h3>
+                    <p>Got a bill that happens every month? Use the <b>Frequency</b> option when adding an entry, and
+                        the app will automatically log it for you every month!</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-h">📈 Step 3: Seeing How You're Doing</h2>
+            <div class="card-grid">
+                <div class="feat-card">
+                    <h3>The Daily Spend Amount</h3>
+                    <p>We show you a "Daily Average". Unlike other apps, we only look at the days where you <b>actually
+                            spent money</b>. This shows you a real picture of how much you tend to spend on a typical
+                        day out.</p>
+                </div>
+                <div class="feat-card">
+                    <h3>Charts Made Simple</h3>
+                    <p>Scroll down to see colorful charts. The <b>Pie Chart</b> shows you where most of your money goes
+                        (like Food or Rent). The <b>Line Chart</b> shows if you are spending more or less as the month
+                        goes on.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="tip">
+            <span class="tip-label">💡 Friendly Tip</span>
+            Made a mistake? Don't worry! You can click any entry in your history to delete it and start over.
+        </div>
+
+        <section class="section">
+            <h2 class="section-h">✨ Step 4: Getting Smart Advice</h2>
+            <div class="card-grid">
+                <div class="feat-card">
+                    <h3>Magic Analysis</h3>
+                    <p>At the end of the month, click <b>Analyze Financials</b>. Our AI will look at your habits and
+                        give you 3 simple tips on how you could save even more next month—specifically for you.</p>
+                </div>
+                <div class="feat-card">
+                    <h3>Just Ask Xpense</h3>
+                    <p>See that little bubble at the bottom right? That's your <b>Chat Assistant</b>. You can ask it
+                        things like "How much did I spend on coffee this week?" or "Give me a tip on grocery shopping."
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-h">🛡️ Common Questions</h2>
+            <div class="card-grid">
+                <div class="feat-card">
+                    <h3>Is my data private?</h3>
+                    <p>Yes! By default, everything is stored right inside your web browser. If you create an account, we
+                        securely sync it to your private account so you can see it on your phone too.</p>
+                </div>
+                <div class="feat-card">
+                    <h3>Can I save my reports?</h3>
+                    <p>Absolutely. Click <b>Export</b> to download an Excel sheet that you can save on your computer or
+                        print out for your records.</p>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>Want a copy for your records?</p>
+            <button class="print-btn" onclick="window.print()">Print this Guide</button>
+            <div class="footer-note">
+                Xpense: Built to make mastery simple.
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('#slider img');
+        const desc = document.getElementById('slideDesc');
+        const captions = [
+            "Dashboard Overview: Budget indicators and full monthly calendar.",
+            "Sidebar Details: Weekly breakdowns and your most recent 5 transactions.",
+            "Trend Charts: Visualizing your income vs. expenses over time.",
+            "Category Breakdown: See exactly what percentage goes to Food, Rent, etc.",
+            "AI Analysis: Personalized financial insights and behavior tips.",
+            "Adding Entries: Simple modal for logging expenses, gains, and recurring items.",
+            "Financial Assistant: Chat with your AI for real-time budgeting advice."
+        ];
+
+        function moveSlide(dir) {
+            if (!slides.length) return;
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (currentSlide + dir + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            desc.textContent = captions[currentSlide];
+        }
+
+        // Open image full screen on click
+        slides.forEach(img => {
+            img.onclick = () => window.open(img.src, '_blank');
+        });
+
+        // Expose moveSlide to global scope for the onclick attributes
+        window.moveSlide = moveSlide;
+    </script>
+</body>
+
+</html>
