@@ -10,6 +10,11 @@ const AUTH_USER_KEY  = 'auth_username';
 function setAuthToken(token, username) {
   localStorage.setItem(AUTH_TOKEN_KEY, token);
   localStorage.setItem(AUTH_USER_KEY, username);
+  // Clear tracker cache so a new login doesn't inherit previous session data
+  localStorage.removeItem("expense_tracker_salary");
+  localStorage.removeItem("expense_tracker_budget");
+  localStorage.removeItem("expense_tracker_weekly_budget");
+  localStorage.removeItem("expense_tracker_entries_v2");
 }
 
 let _csrfToken = null;

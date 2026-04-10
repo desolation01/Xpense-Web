@@ -33,6 +33,10 @@ function setAuthToken(token, username) {
 function clearAuthToken() {
   localStorage.removeItem(AUTH_TOKEN_KEY);
   localStorage.removeItem(AUTH_USER_KEY);
+  localStorage.removeItem(STORAGE_SALARY);
+  localStorage.removeItem(STORAGE_BUDGET);
+  localStorage.removeItem(STORAGE_WEEKLY_BUDGET);
+  localStorage.removeItem(STORAGE_ENTRIES);
 }
 
 function getAuthHeaders() {
