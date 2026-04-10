@@ -1218,7 +1218,14 @@ function main() {
       }
 
       const net = items.reduce((acc, it) => acc + (it.type === "gain" ? it.amount : -it.amount), 0);
-      const btn = createDayButton({ dateObj: d, inMonth, isToday, dayNet: net, maxAbsNet });
+      const btn = createDayButton({
+        dateObj: d,
+        inMonth,
+        isToday,
+        dayNet: net,
+        maxAbsNet,
+        hasEntries: items.length > 0
+      });
 
       if (isClearMode && clearTargets.has(dIso)) {
         btn.classList.add("is-clear-target");
@@ -1231,10 +1238,11 @@ function main() {
     updateHeaderTotals();
   }
 
-  function createDayButton({ dateObj, inMonth, isToday, dayNet, maxAbsNet }) {
+  function createDayButton({ dateObj, inMonth, isToday, dayNet, maxAbsNet, hasEntries = false }) {
     const btn = document.createElement("button");
+    const hasNonZeroNet = dayNet !== 0;
     btn.type = "button";
-    btn.className = `tracker-day${inMonth ? "" : " is-out"}${isToday ? " is-today" : ""}${dayNet !== 0 ? " has-expense" : ""}`;
+    btn.className = `tracker-day${inMonth ? "" : " is-out"}${isToday ? " is-today" : ""}${hasNonZeroNet ? " has-expense" : ""}${hasEntries ? " has-entry" : ""}`;
     btn.dataset.date = isoDate(dateObj);
     btn.setAttribute("role", "gridcell");
 
@@ -1256,6 +1264,9 @@ function main() {
       bottom.classList.add("is-gain");
     } else if (dayNet < 0) {
       bottom.textContent = `-${fmtMoney(Math.abs(dayNet))}`;
+    } else if (hasEntries) {
+      bottom.textContent = "BREAKEVEN";
+      bottom.classList.add("is-breakeven");
     }
 
     btn.appendChild(top);

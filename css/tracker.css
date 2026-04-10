@@ -665,7 +665,8 @@
   background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface-strong));
 }
 
-.tracker-day.has-expense {
+.tracker-day.has-expense,
+.tracker-day.has-entry {
   background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface-strong));
 }
 
@@ -709,6 +710,12 @@
 
 .tracker-day-bottom.is-gain {
   color: var(--color-success);
+}
+
+.tracker-day-bottom.is-breakeven {
+  color: color-mix(in srgb, var(--color-accent) 72%, #ffd166);
+  font-size: 0.68rem;
+  letter-spacing: 0.07em;
 }
 
 /* ── Tracker Controls (Search + Actions) ── */
