@@ -862,25 +862,33 @@ function main() {
     const prefix = `${y}-${String(m + 1).padStart(2, "0")}-`;
     const allRecent = [];
     const spendingDays = new Set();
+    const gainDays = new Set();
     let monthTotalExp = 0;
+    let monthTotalGain = 0;
 
     for (const [date, items] of Object.entries(entriesByDay)) {
       if (date.startsWith(prefix)) {
         let hasDayExpense = false;
+        let hasDayGain = false;
         items.forEach(it => {
           if (it.type === "expense") {
             monthTotalExp += it.amount;
-            allRecent.push({ ...it, date });
             hasDayExpense = true;
+          } else if (it.type === "gain") {
+            monthTotalGain += it.amount;
+            hasDayGain = true;
           }
+          allRecent.push({ ...it, date });
         });
         if (hasDayExpense) spendingDays.add(date);
+        if (hasDayGain) gainDays.add(date);
       }
     }
 
-    // Daily Average Calculation (Days with spending only)
-    const dailyAvg = spendingDays.size > 0 ? (monthTotalExp / spendingDays.size) : 0;
-    if (avgEl) avgEl.textContent = fmtMoney(dailyAvg);
+    // Daily average calculations by type.
+    const dailyAvgExpense = spendingDays.size > 0 ? (monthTotalExp / spendingDays.size) : 0;
+    const dailyAvgGain = gainDays.size > 0 ? (monthTotalGain / gainDays.size) : 0;
+    if (avgEl) avgEl.textContent = fmtMoney(dailyAvgExpense);
 
     // Sort by timestamp or date descending
     allRecent.sort((a, b) => (b.ts || 0) - (a.ts || 0));
@@ -893,9 +901,18 @@ function main() {
 
     listEl.innerHTML = latest.map(it => {
       const emoji = EMOJIS[it.category] || "💸";
-      const diff = dailyAvg > 0 ? ((it.amount - dailyAvg) / dailyAvg) * 100 : 0;
-      const diffText = diff > 0 ? `+${diff.toFixed(0)}% vs avg` : `${diff.toFixed(0)}% vs avg`;
-      const diffClass = diff > 0 ? "up" : (diff < 0 ? "down" : "neutral");
+      const typeAvg = it.type === "gain" ? dailyAvgGain : dailyAvgExpense;
+      const diff = typeAvg > 0 ? ((it.amount - typeAvg) / typeAvg) * 100 : 0;
+      const diffText = typeAvg > 0
+        ? `${diff > 0 ? "+" : ""}${diff.toFixed(0)}% vs ${it.type} avg`
+        : `No ${it.type} avg`;
+      const diffClass = diff === 0
+        ? "neutral"
+        : (it.type === "gain"
+          ? (diff > 0 ? "down" : "up")
+          : (diff > 0 ? "up" : "down"));
+      const amountClass = it.type === "gain" ? "gain" : "expense";
+      const amountPrefix = it.type === "gain" ? "+" : "-";
       
       const dateObj = new Date(it.date);
       const dateStr = dateObj.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -909,7 +926,7 @@ function main() {
             <span class="transaction-date">${dateStr}</span>
           </div>
           <div class="transaction-stats">
-            <span class="transaction-amount expense">-${fmtMoney(it.amount)}</span>
+            <span class="transaction-amount ${amountClass}">${amountPrefix}${fmtMoney(it.amount)}</span>
             <span class="transaction-comparison ${diffClass}">${diffText}</span>
           </div>
         </div>
@@ -1992,4 +2009,3 @@ function main() {
 }
 
 main();
-
