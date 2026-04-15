@@ -3,6 +3,7 @@
   const debugMode = new URLSearchParams(window.location.search).has("pwa-debug");
   let deferredPrompt = null;
   let installButton = null;
+  let installUi = null;
   let pwaDebug = null;
 
   const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
@@ -23,6 +24,53 @@
   function setDebugLine(text) {
     if (!pwaDebug) return;
     pwaDebug.textContent = text;
+  }
+
+  function renderInstallAvailability() {
+    if (!installUi) return;
+    if (isStandaloneMode()) {
+      installUi.banner.hidden = true;
+      updateInstallButtonVisibility();
+      return;
+    }
+
+    if (!deferredPrompt) {
+      updateInstallButtonVisibility();
+      return;
+    }
+
+    if (!shouldShowInstallBanner()) {
+      updateInstallButtonVisibility();
+      return;
+    }
+
+    installUi.text.textContent = "Install Xpense for a full-screen app experience.";
+    installUi.action.textContent = "Install";
+    installUi.action.onclick = async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      installUi.banner.hidden = true;
+      updateInstallButtonVisibility();
+      setDebugLine(`PWA debug | secure:${window.isSecureContext} | manifest:true | sw-api:${"serviceWorker" in navigator} | sw-controller:${Boolean(navigator.serviceWorker && navigator.serviceWorker.controller)} | install-event:false`);
+    };
+    installUi.banner.hidden = false;
+    updateInstallButtonVisibility();
+  }
+
+  function onBeforeInstallPrompt(event) {
+    event.preventDefault();
+    deferredPrompt = event;
+    setDebugLine(`PWA debug | secure:${window.isSecureContext} | manifest:true | sw-api:${"serviceWorker" in navigator} | sw-controller:${Boolean(navigator.serviceWorker && navigator.serviceWorker.controller)} | install-event:true`);
+    renderInstallAvailability();
+  }
+
+  function onAppInstalled() {
+    deferredPrompt = null;
+    if (installUi) installUi.banner.hidden = true;
+    updateInstallButtonVisibility();
+    setDebugLine(`PWA debug | secure:${window.isSecureContext} | manifest:true | sw-api:${"serviceWorker" in navigator} | sw-controller:${Boolean(navigator.serviceWorker && navigator.serviceWorker.controller)} | install-event:false`);
   }
 
   async function setupPwaDebug() {
@@ -115,6 +163,7 @@
 
   function setupInstallFlow() {
     const ui = createInstallBanner();
+    installUi = ui;
     installButton = document.getElementById("pwaInstallBtn");
 
     if (installButton) {
@@ -144,30 +193,7 @@
       ui.banner.hidden = false;
     }
 
-    window.addEventListener("beforeinstallprompt", (event) => {
-      event.preventDefault();
-      deferredPrompt = event;
-      setDebugLine(`PWA debug | secure:${window.isSecureContext} | manifest:true | sw-api:${"serviceWorker" in navigator} | sw-controller:${Boolean(navigator.serviceWorker && navigator.serviceWorker.controller)} | install-event:true`);
-
-      if (isStandaloneMode() || !shouldShowInstallBanner()) {
-        updateInstallButtonVisibility();
-        return;
-      }
-
-      ui.text.textContent = "Install Xpense for a full-screen app experience.";
-      ui.action.textContent = "Install";
-      ui.action.onclick = async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        ui.banner.hidden = true;
-        updateInstallButtonVisibility();
-      };
-      ui.banner.hidden = false;
-      updateInstallButtonVisibility();
-    });
-
+    renderInstallAvailability();
     updateInstallButtonVisibility();
   }
 
@@ -234,4 +260,8 @@
     registerServiceWorker();
     setupPwaDebug();
   });
+
+  // Capture install prompt as early as possible (before DOMContentLoaded).
+  window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+  window.addEventListener("appinstalled", onAppInstalled);
 })();
