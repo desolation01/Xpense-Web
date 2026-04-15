@@ -221,6 +221,33 @@
     try {
       const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
 
+      // If no controller yet (first visit or after clear), wait for the SW
+      // to activate and then reload once so clients.claim() takes effect.
+      if (!navigator.serviceWorker.controller && !sessionStorage.getItem("sw_reload")) {
+        sessionStorage.setItem("sw_reload", "1");
+        const waitForActive = (sw) => {
+          if (sw.state === "activated") {
+            window.location.reload();
+            return;
+          }
+          sw.addEventListener("statechange", () => {
+            if (sw.state === "activated") {
+              window.location.reload();
+            }
+          });
+        };
+
+        if (registration.active) {
+          window.location.reload();
+          return;
+        } else if (registration.installing || registration.waiting) {
+          waitForActive(registration.installing || registration.waiting);
+          return;
+        }
+      } else {
+        sessionStorage.removeItem("sw_reload");
+      }
+
       const listenForUpdate = () => {
         const installing = registration.installing;
         if (!installing) return;
