@@ -1,37 +1,37 @@
-const SW_VERSION = "xpense-pwa-v1.0.0";
+const SW_VERSION = "xpense-pwa-v1.1.0";
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const DYNAMIC_CACHE = `${SW_VERSION}-dynamic`;
 const API_CACHE = `${SW_VERSION}-api`;
 const MAX_DYNAMIC_ENTRIES = 120;
 
 const APP_SHELL = [
-  "/",
-  "/index.html",
-  "/expense-tracker",
-  "/expense-tracker.html",
-  "/user-manual",
-  "/user-manual.html",
-  "/css/tokens.css",
-  "/css/styles.css",
-  "/css/styles.css?v=2.0.0",
-  "/css/tracker.css",
-  "/css/tracker.css?v=2.2.0",
-  "/css/landing.css",
-  "/css/pwa.css",
-  "/js/localDataStore.js",
-  "/js/localDataStore.js?v=1.0.0",
-  "/js/tracker.js",
-  "/js/tracker.js?v=1.3.0",
-  "/js/chat.js",
-  "/js/chat.js?v=1.3.0",
-  "/js/pwa.js",
-  "/js/pwa.js?v=1.0.0",
-  "/assets/hehehe.png",
-  "/assets/hero-mockup.png",
-  "/assets/icons/icon-192.png",
-  "/assets/icons/icon-512.png",
-  "/assets/icons/apple-touch-icon.png",
-  "/manifest.json"
+  "./",
+  "./index.html",
+  "./expense-tracker",
+  "./expense-tracker.html",
+  "./user-manual",
+  "./user-manual.html",
+  "./css/tokens.css",
+  "./css/styles.css",
+  "./css/styles.css?v=2.0.0",
+  "./css/tracker.css",
+  "./css/tracker.css?v=2.2.0",
+  "./css/landing.css",
+  "./css/pwa.css",
+  "./js/localDataStore.js",
+  "./js/localDataStore.js?v=1.0.0",
+  "./js/tracker.js",
+  "./js/tracker.js?v=1.3.0",
+  "./js/chat.js",
+  "./js/chat.js?v=1.3.0",
+  "./js/pwa.js",
+  "./js/pwa.js?v=1.0.0",
+  "./assets/hehehe.png",
+  "./assets/hero-mockup.png",
+  "./assets/icons/icon-192.png",
+  "./assets/icons/icon-512.png",
+  "./assets/icons/apple-touch-icon.png",
+  "./manifest.json"
 ];
 
 self.addEventListener("install", (event) => {
@@ -109,8 +109,8 @@ async function handleNavigation(request) {
     if (cached) return cached;
 
     return (
-      (await caches.match("/expense-tracker.html")) ||
-      (await caches.match("/index.html")) ||
+      (await caches.match("./expense-tracker.html")) ||
+      (await caches.match("./index.html")) ||
       new Response("Offline", {
         status: 503,
         statusText: "Offline",
@@ -132,7 +132,7 @@ async function networkFirst(request, cacheName) {
     if (cached) return cached;
 
     if (request.mode === "navigate") {
-      const fallback = await caches.match("/expense-tracker.html");
+      const fallback = await caches.match("./expense-tracker.html");
       if (fallback) return fallback;
     }
 
