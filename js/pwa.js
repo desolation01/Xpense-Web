@@ -1,7 +1,9 @@
 (function () {
   const OFFLINE_CLASS = "is-offline";
+  const debugMode = new URLSearchParams(window.location.search).has("pwa-debug");
   let deferredPrompt = null;
   let installButton = null;
+  let pwaDebug = null;
 
   const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
   const isSafari = /safari/i.test(window.navigator.userAgent) && !/crios|fxios|edgios|chrome/i.test(window.navigator.userAgent);
@@ -15,7 +17,39 @@
   }
 
   function showGenericInstallHelp() {
-    alert("To install: open your browser menu and choose 'Install app' or 'Add to Home screen'.");
+    alert("Install is not available yet in this browser session. Try: open in full Chrome (not in-app browser), reload once, wait 10 seconds, then check menu again.");
+  }
+
+  function setDebugLine(text) {
+    if (!pwaDebug) return;
+    pwaDebug.textContent = text;
+  }
+
+  async function setupPwaDebug() {
+    if (!debugMode || isStandaloneMode()) return;
+
+    pwaDebug = document.createElement("div");
+    pwaDebug.id = "pwa-debug-strip";
+    pwaDebug.style.cssText = "position:fixed;left:10px;right:10px;bottom:10px;z-index:10000;padding:8px 10px;border-radius:10px;background:rgba(2,6,23,.92);border:1px solid rgba(148,163,184,.35);color:#e2e8f0;font:12px/1.35 system-ui,sans-serif;";
+    pwaDebug.textContent = "PWA check running...";
+    document.body.appendChild(pwaDebug);
+
+    const httpsOk = window.isSecureContext;
+    const swOk = "serviceWorker" in navigator;
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    let manifestOk = false;
+
+    if (manifestLink && manifestLink.href) {
+      try {
+        const res = await fetch(manifestLink.href, { cache: "no-store" });
+        manifestOk = res.ok;
+      } catch {
+        manifestOk = false;
+      }
+    }
+
+    const controllerOk = Boolean(navigator.serviceWorker && navigator.serviceWorker.controller);
+    setDebugLine(`PWA debug | secure:${httpsOk} | manifest:${manifestOk} | sw-api:${swOk} | sw-controller:${controllerOk} | install-event:${Boolean(deferredPrompt)}`);
   }
 
   function updateInstallButtonVisibility() {
@@ -113,6 +147,7 @@
     window.addEventListener("beforeinstallprompt", (event) => {
       event.preventDefault();
       deferredPrompt = event;
+      setDebugLine(`PWA debug | secure:${window.isSecureContext} | manifest:true | sw-api:${"serviceWorker" in navigator} | sw-controller:${Boolean(navigator.serviceWorker && navigator.serviceWorker.controller)} | install-event:true`);
 
       if (isStandaloneMode() || !shouldShowInstallBanner()) {
         updateInstallButtonVisibility();
@@ -197,5 +232,6 @@
     createOfflineIndicator();
     setupInstallFlow();
     registerServiceWorker();
+    setupPwaDebug();
   });
 })();
