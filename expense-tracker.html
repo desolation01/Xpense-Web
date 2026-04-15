@@ -3,11 +3,16 @@
 
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#16a34a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Xpense</title>
   <meta name="description" content="Calendar-themed expense tracker demo." />
   <link rel="icon" href="./assets/fav.png" type="image/png" />
+  <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png" />
+  <link rel="manifest" href="./manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -16,6 +21,7 @@
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="css/styles.css?v=2.0.0" />
   <link rel="stylesheet" href="css/tracker.css?v=2.2.0" />
+  <link rel="stylesheet" href="css/pwa.css" />
 
   <!-- Theme restore (before paint to avoid flash) -->
   <script>
@@ -23,13 +29,6 @@
       if (localStorage.getItem('xpense_theme') === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
       }
-    })();
-  </script>
-  <!-- Auth guard: redirect to login if no token -->
-  <script>
-    (function () {
-      var token = localStorage.getItem('auth_token');
-      if (!token) { window.location.replace('./tracker-login.html'); }
     })();
   </script>
 </head>
@@ -50,7 +49,8 @@
       <nav class="site-nav" aria-label="Secondary">
         <div class="sync-wrapper" style="display:flex; gap:0.4rem; align-items:center;">
           <div class="tracker-sync-controls" id="authControls" style="display: flex; align-items: center; gap: 0.5rem;">
-            <button class="btn btn-small btn-ghost" id="loginOpenBtn">Login</button>
+            <span id="localModeBadge" class="fineprint" style="color: var(--color-primary); font-weight: 600;">Local mode</span>
+            <button class="btn btn-small btn-ghost" id="loginOpenBtn" style="display:none;">Login</button>
             <div id="userStatus" style="display: none; align-items: center; gap: 0.5rem;">
               <span id="usernameDisplay" class="fineprint"
                 style="color: var(--color-primary); font-weight: 600;"></span>
@@ -281,9 +281,14 @@
                         <button class="btn btn-small btn-ghost" id="batchDeleteOpenBtn"
                           title="Batch delete entries">Batch Delete</button>
                         <button class="btn btn-small btn-ghost" id="exportBtn" title="Export to CSV">Export</button>
+                        <button class="btn btn-small btn-ghost" id="exportJsonBtn" title="Export backup JSON">Export JSON</button>
                         <label class="btn btn-small btn-ghost" style="cursor:pointer" title="Import from CSV">
                           Import
                           <input type="file" id="importFile" accept=".csv" style="display:none" />
+                        </label>
+                        <label class="btn btn-small btn-ghost" style="cursor:pointer" title="Import backup JSON">
+                          Import JSON
+                          <input type="file" id="importJsonFile" accept=".json,application/json" style="display:none" />
                         </label>
                       </div>
                     </div>
@@ -483,7 +488,7 @@
           </div>
 
           <button class="btn btn-primary" type="submit">Add Entry</button>
-          <p class="fineprint">Entries are saved locally. Sync to keep them on the server.</p>
+          <p class="fineprint">Entries are saved locally on your device. Use Export JSON for backups.</p>
         </form>
       </div>
   </div>
@@ -595,8 +600,10 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="js/localDataStore.js?v=1.0.0" defer></script>
   <script src="js/tracker.js?v=1.3.0" defer></script>
   <script src="js/chat.js?v=1.3.0" defer></script>
+  <script src="js/pwa.js?v=1.0.0" defer></script>
   <script>
     // ── Theme Toggle ──
     (function () {

@@ -3,6 +3,13 @@ const STORAGE_BUDGET = "expense_tracker_budget";
 const STORAGE_WEEKLY_BUDGET = "expense_tracker_weekly_budget";
 const STORAGE_ENTRIES = "expense_tracker_entries_v2";
 
+const TRACKER_STORAGE_DEFAULTS = {
+  [STORAGE_SALARY]: null,
+  [STORAGE_BUDGET]: null,
+  [STORAGE_WEEKLY_BUDGET]: null,
+  [STORAGE_ENTRIES]: {},
+};
+
 // --- SECURITY & CSRF ---
 let csrfToken = null;
 async function fetchCsrfToken() {
@@ -17,35 +24,61 @@ async function fetchCsrfToken() {
   }
 }
 
-// --- JWT AUTH ---
-const AUTH_TOKEN_KEY = 'auth_token';
-const AUTH_USER_KEY = 'auth_username';
-
-function getAuthToken() {
-  return localStorage.getItem(AUTH_TOKEN_KEY);
-}
-
-function setAuthToken(token, username) {
-  localStorage.setItem(AUTH_TOKEN_KEY, token);
-  localStorage.setItem(AUTH_USER_KEY, username);
-}
-
-function clearAuthToken() {
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-  localStorage.removeItem(AUTH_USER_KEY);
-  localStorage.removeItem(STORAGE_SALARY);
-  localStorage.removeItem(STORAGE_BUDGET);
-  localStorage.removeItem(STORAGE_WEEKLY_BUDGET);
-  localStorage.removeItem(STORAGE_ENTRIES);
-}
-
+// Local mode: auth is disabled for the PWA experience.
+function clearAuthToken() {}
 function getAuthHeaders() {
-  const token = getAuthToken();
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
+  return {};
+}
+
+async function hydrateFromLocalStore() {
+  if (!window.localDataStore) return;
+
+  try {
+    await window.localDataStore.seedDefaults(TRACKER_STORAGE_DEFAULTS);
+
+    const keys = [STORAGE_SALARY, STORAGE_BUDGET, STORAGE_WEEKLY_BUDGET, STORAGE_ENTRIES];
+    for (const key of keys) {
+      const idbValue = await window.localDataStore.getData(key);
+      const localRaw = localStorage.getItem(key);
+
+      if ((typeof idbValue === "undefined" || idbValue === null) && localRaw !== null) {
+        const migrated = key === STORAGE_ENTRIES ? JSON.parse(localRaw || "{}") : Number(localRaw);
+        if (key === STORAGE_ENTRIES) {
+          await window.localDataStore.saveData(key, migrated && typeof migrated === "object" ? migrated : {});
+        } else if (Number.isFinite(migrated)) {
+          await window.localDataStore.saveData(key, migrated);
+        }
+        continue;
+      }
+
+      if (typeof idbValue !== "undefined") {
+        if (idbValue === null) {
+          localStorage.removeItem(key);
+        } else if (key === STORAGE_ENTRIES) {
+          localStorage.setItem(key, JSON.stringify(idbValue));
+        } else {
+          localStorage.setItem(key, String(idbValue));
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("Local store hydration failed, continuing with localStorage fallback.", error);
+  }
+}
+
+function mirrorToPrimaryStore(key, value) {
+  if (!window.localDataStore) return;
+
+  if (value === null || typeof value === "undefined") {
+    window.localDataStore.deleteData(key).catch(() => {});
+    return;
+  }
+
+  window.localDataStore.saveData(key, value).catch(() => {});
 }
 
 function fmtMoney(n) {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "--";
   return new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
@@ -81,15 +114,33 @@ function loadBudget() {
 }
 
 function saveSalary(n) {
+  if (!Number.isFinite(n)) {
+    localStorage.removeItem(STORAGE_SALARY);
+    mirrorToPrimaryStore(STORAGE_SALARY, null);
+    return;
+  }
   localStorage.setItem(STORAGE_SALARY, String(n));
+  mirrorToPrimaryStore(STORAGE_SALARY, n);
 }
 
 function saveBudget(n) {
+  if (!Number.isFinite(n)) {
+    localStorage.removeItem(STORAGE_BUDGET);
+    mirrorToPrimaryStore(STORAGE_BUDGET, null);
+    return;
+  }
   localStorage.setItem(STORAGE_BUDGET, String(n));
+  mirrorToPrimaryStore(STORAGE_BUDGET, n);
 }
 
 function saveWeeklyBudget(n) {
+  if (!Number.isFinite(n)) {
+    localStorage.removeItem(STORAGE_WEEKLY_BUDGET);
+    mirrorToPrimaryStore(STORAGE_WEEKLY_BUDGET, null);
+    return;
+  }
   localStorage.setItem(STORAGE_WEEKLY_BUDGET, String(n));
+  mirrorToPrimaryStore(STORAGE_WEEKLY_BUDGET, n);
 }
 
 function loadWeeklyBudget() {
@@ -103,17 +154,16 @@ function loadEntries() {
     const raw = localStorage.getItem(STORAGE_ENTRIES);
     if (!raw) return {};
     let obj = JSON.parse(raw);
-    
+
     // Ensure it's a standard object, not an array.
-    // JSON.stringify behaves differently on arrays when using string keys (like dates).
     if (Array.isArray(obj)) {
       const converted = {};
       Object.keys(obj).forEach(k => {
-        if (isNaN(k)) converted[k] = obj[k]; // Copy named keys
+        if (isNaN(k)) converted[k] = obj[k];
       });
       return converted;
     }
-    
+
     return obj && typeof obj === "object" ? obj : {};
   } catch {
     return {};
@@ -121,10 +171,12 @@ function loadEntries() {
 }
 
 function saveEntries(obj) {
-  localStorage.setItem(STORAGE_ENTRIES, JSON.stringify(obj));
+  const safe = obj && typeof obj === "object" ? obj : {};
+  localStorage.setItem(STORAGE_ENTRIES, JSON.stringify(safe));
+  mirrorToPrimaryStore(STORAGE_ENTRIES, safe);
 }
 
-function main() {
+async function main() {
   const salaryCard = document.getElementById("salaryCard");
   const calendarCard = document.getElementById("calendarCard");
   const trackerGrid = document.getElementById("trackerGrid");
@@ -156,7 +208,9 @@ function main() {
 
   const searchInput = document.getElementById("searchInput");
   const exportBtn = document.getElementById("exportBtn");
+  const exportJsonBtn = document.getElementById("exportJsonBtn");
   const importFile = document.getElementById("importFile");
+  const importJsonFile = document.getElementById("importJsonFile");
   const weeklyBreakdownList = document.getElementById("weeklyBreakdownList");
   const monthlyTotalValue = document.getElementById("monthlyTotalValue");
 
@@ -185,6 +239,7 @@ function main() {
     return;
   }
 
+  await hydrateFromLocalStore();
   let entriesByDay = loadEntries();
   let salary = loadSalary();
   let budget = loadBudget();
@@ -242,48 +297,12 @@ function main() {
       updateChart();
     });
   }
+  function setLocalModeUI() {
+    if (loginOpenBtn) loginOpenBtn.style.display = "none";
+    if (userStatus) userStatus.style.display = "none";
+    if (logoutBtn) logoutBtn.style.display = "none";
+    if (syncBtn) syncBtn.style.display = "none";
 
-  async function checkAuthStatus() {
-    try {
-      const token = getAuthToken();
-      if (token) {
-        // Verify token is still valid
-        const res = await fetch("/api/api?action=status", {
-          headers: {
-            "Accept": "application/json",
-            ...getAuthHeaders()
-          }
-        });
-        const data = await res.json();
-        if (data && data.logged_in) {
-          setLoggedInUI(data.username);
-          initialSync();
-        } else {
-          clearAuthToken();
-          window.location.replace('./tracker-login.html');
-        }
-      } else {
-        window.location.replace('./tracker-login.html');
-      }
-    } catch (e) {
-      console.error("Auth status check failed.", e);
-      // On network error, still show the app if token exists (offline mode)
-      const token = getAuthToken();
-      if (token) {
-        const username = localStorage.getItem('auth_username') || 'User';
-        setLoggedInUI(username);
-      } else {
-        window.location.replace('./tracker-login.html');
-      }
-    }
-  }
-
-  function setLoggedInUI(username) {
-    loginOpenBtn.style.display = "none";
-    userStatus.style.display = "flex";
-    usernameDisplay.textContent = username;
-    syncBtn.style.display = "flex";
-    
     trackerHeader.style.display = "block";
     trackerMain.style.display = "block";
     setTimeout(() => {
@@ -292,49 +311,15 @@ function main() {
     }, 50);
   }
 
-  // Initial Sync from server
   async function initialSync() {
-    syncBtn.innerHTML = "⌛";
-    try {
-      const res = await fetch("/api/api?action=sync", {
-        headers: getAuthHeaders()
-      });
-      if (res.ok) {
-        const data = await res.json();
-        
-        // Merge or Overwrite?
-        // Server is source of truth, but ONLY if it actually returned data.
-        const serverHasData = (data.salary !== null || Object.keys(data.entriesByDay || {}).length > 0);
-        const localHasEntries = (Object.keys(entriesByDay || {}).length > 0);
-
-        if (serverHasData) {
-          // Cloud is non-empty: Accept cloud as truth
-          entriesByDay = data.entriesByDay || {};
-          salary = data.salary;
-          budget = data.budget;
-          weeklyBudget = data.weeklyBudget;
-          saveEntries(entriesByDay);
-          saveSalary(salary);
-          saveBudget(budget);
-          saveWeeklyBudget(weeklyBudget);
-        } else if (localHasEntries) {
-          // Cloud is empty, but local has data: Push local to Cloud!
-          triggerSync();
-        }
-        
-        ensureSetupState();
-        syncBtn.innerHTML = "✅";
-      }
-    } catch (e) {
-      console.log("Initial sync failed.");
-      syncBtn.innerHTML = "☁️";
-    } finally {
-      setTimeout(() => { syncBtn.innerHTML = "☁️"; }, 2000);
-    }
+    return;
   }
 
-  // Auto-run status check
-  checkAuthStatus();
+  const triggerSync = async () => {
+    return;
+  };
+
+  setLocalModeUI();
 
   salaryForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -369,66 +354,6 @@ function main() {
   const monthNames = Array.from({ length: 12 }, (_, i) =>
     new Date(2000, i, 1).toLocaleString(undefined, { month: "long" })
   );
-
-  const triggerSync = async () => {
-    if (!usernameDisplay.textContent) return; 
-    syncBtn.disabled = true;
-    syncBtn.classList.add("is-syncing");
-    try {
-      const token = await fetchCsrfToken();
-      // Safeguard: Ensure we are sending the current global state
-      // Final sanity check: ensure we are not sending an array with string keys
-      let currentEntries = typeof entriesByDay !== 'undefined' ? entriesByDay : {};
-      if (Array.isArray(currentEntries)) {
-        const fixed = {};
-        Object.keys(currentEntries).forEach(k => fixed[k] = currentEntries[k]);
-        currentEntries = fixed;
-      }
-
-      const res = await fetch("/api/api?action=sync", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": token,
-          ...getAuthHeaders()
-        },
-        body: JSON.stringify({
-          entriesByDay: currentEntries,
-          entriesCount: Object.keys(currentEntries).length,
-          salary, budget, weeklyBudget
-        })
-      });
-
-      if (!res.ok) {
-        let errText = await res.text();
-        try {
-          const errJson = JSON.parse(errText);
-          if (errJson.error) errText = errJson.error;
-        } catch(e) {}
-        throw new Error(errText.substring(0, 200));
-      }
-
-      const data = await res.json();
-      console.log("Sync Response:", data);
-      
-      if (data.status === "success") {
-        syncBtn.innerHTML = "✅";
-      } else {
-        throw new Error(data.error || "Unknown sync error");
-      }
-
-      syncBtn.innerHTML = "✅";
-    } catch (err) {
-      console.error("Auto-sync failed:", err);
-      alert("Sync Error: " + err.message);
-      syncBtn.innerHTML = "❌";
-    } finally {
-      setTimeout(() => { 
-        syncBtn.classList.remove("is-syncing"); 
-        syncBtn.disabled = false; 
-      }, 1000);
-    }
-  };
 
   function saveAndRefresh() {
     saveEntries(entriesByDay);
@@ -475,15 +400,15 @@ function main() {
     const monthBudgetRemain = budget ? (budget - monthExp) : 0;
     const weekBudgetRemain = weeklyBudget ? (weeklyBudget - weeklyExp) : 0;
 
-    if (salaryDisplay) salaryDisplay.textContent = salary == null ? "—" : fmtMoney(salary);
+    if (salaryDisplay) salaryDisplay.textContent = salary == null ? "--" : fmtMoney(salary);
     
     if (budgetDisplay) {
-      budgetDisplay.textContent = budget ? fmtMoney(monthBudgetRemain) : "—";
+      budgetDisplay.textContent = budget ? fmtMoney(monthBudgetRemain) : "--";
       budgetDisplay.classList.toggle("negative", budget && monthBudgetRemain < 0);
     }
     
     if (weeklyBudgetDisplay) {
-      weeklyBudgetDisplay.textContent = weeklyBudget ? fmtMoney(weekBudgetRemain) : "—";
+      weeklyBudgetDisplay.textContent = weeklyBudget ? fmtMoney(weekBudgetRemain) : "--";
       weeklyBudgetDisplay.classList.toggle("negative", weeklyBudget && weekBudgetRemain < 0);
     }
 
@@ -529,7 +454,7 @@ function main() {
         _totalSpentDisplay.textContent = fmtMoney(lifetimeSpent);
       }
       if (_weekBudgetMiniDisplay) {
-        _weekBudgetMiniDisplay.textContent = weeklyBudget ? fmtMoney(weekBudgetRemain) : '—';
+        _weekBudgetMiniDisplay.textContent = weeklyBudget ? fmtMoney(weekBudgetRemain) : "--";
         _weekBudgetMiniDisplay.classList.toggle("negative", weekBudgetRemain < 0);
       }
       const _weekPct = weeklyBudget > 0 ? Math.min(100, Math.round((weeklyExp / weeklyBudget) * 100)) : 0;
@@ -746,7 +671,7 @@ function main() {
         maintainAspectRatio: false,
         scales: {
           x: { grid: { color: "rgba(0,0,0,0.05)" }, ticks: { color: "#4B5563" } },
-          y: { grid: { color: "rgba(0,0,0,0.05)" }, ticks: { color: "#4B5563", callback: value => "₱" + value.toLocaleString() } }
+          y: { grid: { color: "rgba(0,0,0,0.05)" }, ticks: { color: "#4B5563", callback: value => "PHP " + value.toLocaleString() } }
         },
         plugins: {
           legend: { position: "top", labels: { color: "#111827" } },
@@ -1044,7 +969,7 @@ function main() {
     if (!analyzeFinalBtn || !summaryDesc) return;
 
     analyzeFinalBtn.disabled = true;
-    analyzeFinalBtn.innerHTML = "⌛ Analyzing...";
+    analyzeFinalBtn.innerHTML = "Analyzing...";
     summaryDesc.classList.add("is-loading");
     summaryDesc.innerHTML = "";
 
@@ -1081,11 +1006,11 @@ function main() {
       
       const prompt = `
         Analyze my ${monthName} ${y} financials in detail:
-        - Total Spent: ₱${total}
-        - Top Category: ${topCategory[0]} (₱${topCategory[1]})
-        - Highest Spending Day: ${maxDayStr} (₱${maxDayVal})
-        - Monthly Budget: ₱${budget || "Not set"}
-        - Monthly Salary: ₱${salary || "Not set"}
+        - Total Spent: PHP {total}
+        - Top Category: ${topCategory[0]} (PHP {topCategory[1]})
+        - Highest Spending Day: ${maxDayStr} (PHP {maxDayVal})
+        - Monthly Budget: PHP {budget || "Not set"}
+        - Monthly Salary: PHP {salary || "Not set"}
 
         Provide a structured financial review:
         1. Performance Summary: Include specific percentages (e.g., "% of budget utilized", "% of salary spent", and "Top category share %").
@@ -1094,7 +1019,7 @@ function main() {
 
         CRITICAL FORMATTING: 
         1. Use NO markdown (no **). 
-        2. Wrap all amounts (₱), percentages (%), dates (YYYY-MM-DD), and the words "Smart Tip:" in <b> tags.
+        2. Wrap all amounts (PHP, percentages (%), dates (YYYY-MM-DD), and the words "Smart Tip:" in <b> tags.
         3. Use <br><br> to separate the summary section from the tips section.
         4. Keep the total response under 6 sentences plus the 3 tips.
       `;
@@ -1136,7 +1061,7 @@ function main() {
       summaryDesc.textContent = "Error connecting to AI assistant. Ensure server is online.";
     } finally {
       analyzeFinalBtn.disabled = false;
-      analyzeFinalBtn.innerHTML = "<span class='ai-spark'>✨</span> Analyze Financials";
+      analyzeFinalBtn.innerHTML = "<span class='ai-spark'>AI</span> Analyze Financials";
     }
   }
 
@@ -1415,78 +1340,95 @@ function main() {
     };
     reader.readAsText(file);
   });
+  if (exportJsonBtn) {
+    exportJsonBtn.addEventListener("click", async () => {
+      const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        data: {
+          salary,
+          budget,
+          weeklyBudget,
+          entriesByDay
+        }
+      };
 
-  salaryForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const s = parseMoney(salaryInput.value);
-    const b = parseMoney(budgetInput.value);
-    
-    if (!Number.isFinite(s)) return;
-    
-    if (Number.isFinite(b) && b > s) {
-      alert("Monthly budget cannot be greater than your monthly salary.");
-      budgetInput.focus();
-      return;
-    }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `xpense-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 
-    salary = s;
-    budget = Number.isFinite(b) ? b : null;
-    saveSalary(s);
-    saveBudget(budget);
-    ensureSetupState();
-  });
+  if (importJsonFile) {
+    importJsonFile.addEventListener("change", (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (readEvent) => {
+        try {
+          const parsed = JSON.parse(readEvent.target.result);
+          const data = parsed && parsed.data ? parsed.data : parsed;
+
+          if (!data || typeof data !== "object") {
+            throw new Error("Invalid backup file.");
+          }
+
+          salary = Number.isFinite(Number(data.salary)) ? Number(data.salary) : null;
+          budget = Number.isFinite(Number(data.budget)) ? Number(data.budget) : null;
+          weeklyBudget = Number.isFinite(Number(data.weeklyBudget)) ? Number(data.weeklyBudget) : null;
+          entriesByDay = data.entriesByDay && typeof data.entriesByDay === "object" ? data.entriesByDay : {};
+
+          saveSalary(salary);
+          saveBudget(budget);
+          saveWeeklyBudget(weeklyBudget);
+          saveEntries(entriesByDay);
+          ensureSetupState();
+          saveAndRefresh();
+        } catch (error) {
+          alert("Unable to import JSON backup.");
+          console.error(error);
+        } finally {
+          importJsonFile.value = "";
+        }
+      };
+
+      reader.readAsText(file);
+    });
+  }
 
   resetBtn.addEventListener("click", async () => {
-    if (!confirm("⚠️ Are you sure? This will PERMANENTLY delete all your local and cloud data.")) return;
-    
-    // 1. Wipe Internal state
+    if (!confirm("Are you sure? This will permanently delete your local tracker data on this device.")) return;
+
     entriesByDay = {};
     salary = null;
     budget = null;
+    weeklyBudget = null;
 
-    // 2. Wipe Local Storage
-    localStorage.removeItem(STORAGE_SALARY);
-    localStorage.removeItem(STORAGE_BUDGET);
-    localStorage.removeItem(STORAGE_ENTRIES);
-    localStorage.removeItem(STORAGE_WEEKLY_BUDGET);
-    localStorage.removeItem("tracker_sync_key");
-    
-    // Clear in-memory storage too if used
     saveSalary(null);
     saveBudget(null);
+    saveWeeklyBudget(null);
     saveEntries({});
 
-    // 3. Wipe Cloud Database
-    try {
-      const token = await fetchCsrfToken();
-      const authHeaders = getAuthHeaders();
-      
-      if (Object.keys(authHeaders).length > 0) {
-        await fetch("/api/api?action=sync", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": token,
-            ...authHeaders
-          },
-          body: JSON.stringify({ entriesByDay: {}, salary: null, budget: null })
-        });
-      }
-    } catch(e) {
-      console.error("Cloud reset failed:", e);
+    if (window.localDataStore) {
+      await Promise.all([
+        window.localDataStore.deleteData(STORAGE_SALARY),
+        window.localDataStore.deleteData(STORAGE_BUDGET),
+        window.localDataStore.deleteData(STORAGE_WEEKLY_BUDGET),
+        window.localDataStore.deleteData(STORAGE_ENTRIES)
+      ]).catch(() => {});
     }
 
-    // 4. Force Redirect/Reload
-    alert("Project reset successful.");
+    alert("Local data reset successful.");
     window.location.reload();
   });
 
-  syncBtn.addEventListener("click", triggerSync);
-
-  logoutBtn.onclick = async () => {
-    clearAuthToken();
-    window.location.reload();
-  };
+  if (syncBtn) syncBtn.addEventListener("click", triggerSync);
+  if (logoutBtn) logoutBtn.onclick = () => {};
 
   entryForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -1834,9 +1776,9 @@ function main() {
     function buildFinancialContext() {
       const parts = [
         `Today's Date: ${new Date().toISOString().split('T')[0]}`,
-        `Currency: Philippine Peso (₱)`,
-        `Monthly Salary: ₱${salary || "Not set"}`,
-        `Monthly Budget: ₱${budget || "Not set"}`,
+        `Currency: Philippine Peso (PHP)`,
+        `Monthly Salary: PHP ${salary || "Not set"}`,
+        `Monthly Budget: PHP ${budget || "Not set"}`,
         "RECENT TRANSACTIONS (Last 60 days):"
       ];
       
@@ -1924,8 +1866,8 @@ function main() {
                "Your ONLY purpose is to discuss the Xpense website features and provide financial advice/analysis based on the user's data. " +
                "STRICT RULE: Do NOT answer questions about unrelated topics (e.g., general knowledge, jokes, other websites, or unrelated programming). " +
                "If a user asks something non-financial or unrelated to Xpense, politely decline and offer to help with their expenses or budget instead. " +
-               "The currency is Philippine Peso (₱). Use the provided spending data to answer user questions. Be precise with calculations. " +
-               "ALWAYS use the ₱ symbol when mentioning money. If they ask about spending, sum up the relevant categories/dates from the log. " +
+               "The currency is Philippine Peso (PHP). Use the provided spending data to answer user questions. Be precise with calculations. " +
+               "ALWAYS use the PHP symbol when mentioning money. If they ask about spending, sum up the relevant categories/dates from the log. " +
                "If they are over budget, give friendly advice. Keep responses concise and use bold for numbers.\n\n" +
                "NEW CAPABILITY: You can now modify the user's data! " +
                "To take an action, append ONE of these commands at the VERY END of your response (it will be parsed internally):\n" +
@@ -1966,7 +1908,7 @@ function main() {
       setOpen(false);
     });
 
-    addMessage("assistant", "Hi! I'm your Financial Assistant. I've analyzed your spending logs in ₱. How can I help you today?");
+    addMessage("assistant", "Hi! I'm your Financial Assistant. I've analyzed your spending logs in PHP. How can I help you today?");
 
     form.onsubmit = async (e) => {
       e.preventDefault();
@@ -2019,4 +1961,8 @@ function main() {
   ensureSetupState();
 }
 
-main();
+main().catch((error) => {
+  console.error("Failed to initialize tracker.", error);
+});
+
+

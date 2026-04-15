@@ -3,265 +3,303 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#16a34a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description"
-        content="Xpense - The ultimate calendar-first expense tracker for students and professionals.">
-    <title>Xpense | Master Your Money</title>
+        content="Xpense is a calendar-first expense tracker with clear budgets, trend analysis, and AI-powered money guidance.">
+    <title>Xpense | Calendar-First Budgeting</title>
     <link rel="icon" href="./assets/fav.png" type="image/png">
-    <link rel="stylesheet" href="css/landing.css?v=2.0.0">
+    <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="stylesheet" href="css/landing.css?v=3.0.0">
+    <link rel="stylesheet" href="css/pwa.css">
 </head>
 
 <body>
-
-    <div class="bg-glow">
-        <div class="glow-1"></div>
-        <div class="glow-2"></div>
-    </div>
+    <div class="page-noise" aria-hidden="true"></div>
+    <div class="page-orb page-orb-a" aria-hidden="true"></div>
+    <div class="page-orb page-orb-b" aria-hidden="true"></div>
 
     <nav class="nav" id="navbar">
         <div class="container nav-inner">
-            <a href="expense-tracker" class="logo">
-                <div class="logo-mark">
-                    <img src="./assets/hehehe.png" alt="Xpense Logo"
-                        style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit;">
-                </div>
-                <span>Xpense</span>
+            <a href="./" class="logo" aria-label="Xpense home">
+                <span class="logo-mark">
+                    <img src="./assets/hehehe.png" alt="Xpense logo" />
+                </span>
+                <span class="logo-wordmark">Xpense</span>
             </a>
-            <button class="nav-toggle" id="navToggle" aria-label="Toggle Navigation">
-                <span></span><span></span><span></span>
+
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
             </button>
+
             <div class="nav-links" id="navLinks">
                 <a href="#features" class="nav-link">Features</a>
-                <a href="#how-it-works" class="nav-link">How it Works</a>
+                <a href="#how-it-works" class="nav-link">How it works</a>
                 <a href="user-manual" class="nav-link">Manual</a>
-                <a href="expense-tracker" class="btn btn-outline">Login</a>
-                <a href="expense-tracker" class="btn btn-primary">Get Started</a>
+                <a href="expense-tracker" class="btn btn-ghost">Local App</a>
+                <a href="expense-tracker" class="btn btn-primary">Open App</a>
             </div>
         </div>
     </nav>
 
-    <header class="hero">
-        <div class="container">
-            <div class="badge">✨ Now with AI Analysis</div>
-            <h1>Master Your Money,<br>One Day at a Time.</h1>
-            <p>The ultimate calendar-first expense tracker designed for students and professionals. Track budgets,
-                analyze trends, and save more with AI-powered insights.</p>
-            <div class="hero-ctas">
-                <a href="expense-tracker" class="btn btn-primary">Start Tracking Free</a>
-                <a href="#features" class="btn btn-outline">See Features</a>
-            </div>
-            <div class="hero-mockup" data-reveal>
-                <img src="assets/hero-mockup.png" alt="Xpense Dashboard Mockup">
-            </div>
-        </div>
-    </header>
+    <main>
+        <section class="hero">
+            <div class="container hero-grid">
+                <div class="hero-copy" data-reveal>
+                    <p class="eyebrow">Budgeting built for the way people actually spend</p>
+                    <h1>Track money with the rhythm of your calendar.</h1>
+                    <p class="hero-text">
+                        Xpense turns budgets into a clear monthly story. Plan your limits, log each day in seconds, and
+                        get sharper insights before small habits turn into expensive ones.
+                    </p>
 
-    <section class="container" id="features">
-        <div class="section-title">
-            <div class="badge">Features</div>
-            <h2>Built for Clarity</h2>
-            <p>Everything you need to stay on top of your finances without the complexity.</p>
-        </div>
+                    <div class="hero-actions">
+                        <a href="expense-tracker" class="btn btn-primary">Start tracking</a>
+                        <a href="#features" class="btn btn-ghost">Explore the flow</a>
+                    </div>
 
-        <div class="bento-grid">
-            <div class="bento-item large" data-reveal>
-                <div class="bento-icon">📅</div>
-                <h3>Calendar-First Tracking</h3>
-                <p>Visualize your spending patterns day-by-day. Clicking a day is all it takes to log an entry. No
-                    complex menus, just intuitive visual tracking.</p>
-            </div>
-            <div class="bento-item" data-reveal>
-                <div class="bento-icon">🤖</div>
-                <h3>AI Insights</h3>
-                <p>Our Groq-powered assistant analyzes your monthly habits and gives you 3 actionable tips to save more.
-                </p>
-            </div>
-            <div class="bento-item" data-reveal>
-                <div class="bento-icon">📈</div>
-                <h3>Smart Daily Avg</h3>
-                <p>Unlike other apps, we only count the days you actually spend money. Get a realistic view of your
-                    high-spend days.</p>
-            </div>
-            <div class="bento-item large" data-reveal>
-                <div class="bento-icon">🛡️</div>
-                <h3>Privacy First</h3>
-                <p>Your data stays in your browser's local storage by default. Want to sync across devices? Log in and
-                    we'll keep it safe in the cloud.</p>
-            </div>
-        </div>
-    </section>
+                    <ul class="hero-points">
+                        <li>Calendar-first logging that feels immediate</li>
+                        <li>Weekly and monthly checkpoints in one view</li>
+                        <li>AI analysis for trends, not just totals</li>
+                    </ul>
+                </div>
 
-    <section class="container">
-        <div class="stats" data-reveal>
-            <div class="stat-item">
-                <div class="stat-value" id="userCountStats">--</div>
-                <div class="stat-label">Active Users</div>
-            </div>
-            <!--<div class="stat-item">
-                <div class="stat-value">12k+</div>
-                <div class="stat-label">Monthly Clients</div>
-            </div>
-        -->
-            <div class="stat-item">
-                <div class="stat-value" id="entryCountStats">--</div>
-                <div class="stat-label">Transactions Logged</div>
-            </div>
-        </div>
-    </section>
+                <div class="hero-stage" data-reveal>
+                    <div class="hero-device">
+                        <img src="assets/hero-mockup.png" alt="Xpense dashboard preview">
+                    </div>
 
-    <section class="container" id="how-it-works">
-        <div class="section-title">
-            <h2>Three Steps to Freedom</h2>
-        </div>
-        <div class="bento-grid">
-            <div class="bento-item" data-reveal>
-                <div class="bento-icon">1️⃣</div>
-                <h3>Set Your Budget</h3>
-                <p>Input your monthly salary and target weekly spend. We'll handle the math.</p>
-            </div>
-            <div class="bento-item" data-reveal>
-                <div class="bento-icon">2️⃣</div>
-                <h3>Log Your Day</h3>
-                <p>Click the calendar, add your expense or gain. It takes less than 5 seconds.</p>
-            </div>
-            <div class="bento-item" data-reveal>
-                <div class="bento-icon">3️⃣</div>
-                <h3>Grow Your Savings</h3>
-                <p>Watch your savings rate climb and get AI tips to reach your goals faster.</p>
-            </div>
-        </div>
-    </section>
+                    <div class="floating-card floating-card-top">
+                        <p class="floating-label">This month</p>
+                        <p class="floating-value">PHP 6,420 left</p>
+                        <p class="floating-note">Budget pace is healthy</p>
+                    </div>
 
-    <section class="container">
-        <div class="section-title">
-            <h2>Trusted by the best</h2>
-        </div>
-        <div class="testimonials">
-            <div class="testimonial-card" data-reveal>
-                <p class="testimonial-text">"As a student on a tight budget, Xpense helped me identify exactly where my
-                    coffee money was going. The calendar view is a game changer."</p>
-                <div class="testimonial-author">
-                    <div class="author-info">
-                        <h4>Alex Rivera</h4>
-                        <p>University Student</p>
+                    <div class="floating-card floating-card-bottom">
+                        <p class="floating-label">Today</p>
+                        <div class="floating-row">
+                            <span>Lunch</span>
+                            <strong>PHP 180</strong>
+                        </div>
+                        <div class="floating-row">
+                            <span>Ride</span>
+                            <strong>PHP 95</strong>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="testimonial-card" data-reveal>
-                <p class="testimonial-text">"Finally a tool that doesn't feel like a chore. I use it to manage my
-                    freelance client project expenses separately. Simple and elegant."</p>
-                <div class="testimonial-author">
-                    <div class="author-info">
-                        <h4>Sarah Chen</h4>
-                        <p>Freelance Designer</p>
+        </section>
+
+        <section class="stats-band" data-reveal>
+            <div class="container stats-band-inner">
+                <div class="stat-block">
+                    <span class="stat-kicker">Active users</span>
+                    <strong class="stat-value" id="userCountStats">--</strong>
+                </div>
+                <div class="stat-block">
+                    <span class="stat-kicker">Transactions logged</span>
+                    <strong class="stat-value" id="entryCountStats">--</strong>
+                </div>
+                <div class="stat-block">
+                    <span class="stat-kicker">Average setup time</span>
+                    <strong class="stat-value">Under 2 min</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="feature-band feature-band-light" id="features">
+            <div class="container section-shell">
+                <div class="section-heading" data-reveal>
+                    <p class="eyebrow eyebrow-dark">Core experience</p>
+                    <h2>Everything is shaped around a monthly spending story.</h2>
+                    <p>
+                        The page follows the same flow as the product: understand the month, inspect the week, then
+                        zoom into the day when you need detail.
+                    </p>
+                </div>
+
+                <div class="feature-list">
+                    <article class="feature-row" data-reveal>
+                        <div class="feature-copy">
+                            <span class="feature-index">01</span>
+                            <h3>One glance tells you where the month stands.</h3>
+                            <p>
+                                Salary, remaining balance, weekly pace, and current month totals stay visible so you can
+                                make faster decisions without opening separate panels.
+                            </p>
+                        </div>
+                        <div class="feature-visual">
+                            <img src="assets/docs/dash.png" alt="Dashboard overview in Xpense">
+                        </div>
+                    </article>
+
+                    <article class="feature-row feature-row-reverse" data-reveal>
+                        <div class="feature-copy">
+                            <span class="feature-index">02</span>
+                            <h3>Calendar cells become your fastest input surface.</h3>
+                            <p>
+                                Click any date, add an expense or gain, and keep a traceable record tied to the actual
+                                day it happened. The flow favors speed and memory over rigid forms.
+                            </p>
+                        </div>
+                        <div class="feature-visual">
+                            <img src="assets/docs/sidebar.png" alt="Calendar and day detail in Xpense">
+                        </div>
+                    </article>
+
+                    <article class="feature-row" data-reveal>
+                        <div class="feature-copy">
+                            <span class="feature-index">03</span>
+                            <h3>Insights stay practical instead of abstract.</h3>
+                            <p>
+                                Category splits, monthly summaries, and AI prompts help you see patterns, compare
+                                momentum, and adjust before the next week drifts off course.
+                            </p>
+                        </div>
+                        <div class="feature-visual">
+                            <img src="assets/docs/trend.png" alt="Trend charts and analytics in Xpense">
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="feature-band feature-band-dark" id="how-it-works">
+            <div class="container split-layout">
+                <div class="section-heading section-heading-left" data-reveal>
+                    <p class="eyebrow">How it works</p>
+                    <h2>Three steady steps from paycheck to peace of mind.</h2>
+                    <p>
+                        Xpense keeps the process small on purpose. Set the limits, log what happened, and let the app
+                        surface what needs attention next.
+                    </p>
+                </div>
+
+                <div class="steps-panel" data-reveal>
+                    <article class="step-card">
+                        <span class="step-number">01</span>
+                        <h3>Set your monthly and weekly caps.</h3>
+                        <p>Give the tracker your salary and ideal spend so every panel can measure against a clear target.</p>
+                    </article>
+                    <article class="step-card">
+                        <span class="step-number">02</span>
+                        <h3>Log each day in the calendar.</h3>
+                        <p>Add expenses or gains right on the date they happened with labels, categories, and recurring rules.</p>
+                    </article>
+                    <article class="step-card">
+                        <span class="step-number">03</span>
+                        <h3>Review trends before the month closes.</h3>
+                        <p>Use charts, summaries, and AI analysis to catch spending spikes and adjust the next week early.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="cta-section">
+            <div class="container">
+                <div class="cta-card" data-reveal>
+                    <div class="cta-copy">
+                        <p class="eyebrow eyebrow-dark">Ready when you are</p>
+                        <h2>Bring structure to the month without adding friction to your day.</h2>
+                        <p>
+                            Open Xpense, set your starting numbers, and begin tracking from the first click. No bloated
+                            setup, no guessing where the money went.
+                        </p>
+                    </div>
+                    <div class="cta-actions">
+                        <a href="expense-tracker" class="btn btn-primary">Launch tracker</a>
+                        <a href="expense-tracker" class="btn btn-ghost btn-dark">Open local mode</a>
                     </div>
                 </div>
             </div>
-            <div class="testimonial-card" data-reveal>
-                <p class="testimonial-text">"The AI analysis actually gave me tips I hadn't thought of. It's like having
-                    a financial advisor in my pocket."</p>
-                <div class="testimonial-author">
-                    <div class="author-info">
-                        <h4>James Wilson</h4>
-                        <p>Marketing Consultant</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+        </section>
+    </main>
 
-    <section class="container">
-        <div class="final-cta" data-reveal>
-            <h2>Ready to take control?</h2>
-            <p>Join thousands of students and clients mastering their finances for free.</p>
-            <br>
-            <a href="expense-tracker" class="btn btn-primary" style="padding: 1.2rem 3rem; font-size: 1.2rem;">Get
-                Started Now</a>
-        </div>
-    </section>
-
-    <footer class="container">
-        <div class="footer-inner">
-            <div class="footer-copy">
-                &copy; 2026 Tristan Namingit. Built with ❤️ for students and clients.
+    <footer class="site-footer">
+        <div class="container footer-grid">
+            <div>
+                <a href="./" class="logo footer-logo" aria-label="Xpense home">
+                    <span class="logo-mark">
+                        <img src="./assets/hehehe.png" alt="" aria-hidden="true" />
+                    </span>
+                    <span class="logo-wordmark">Xpense</span>
+                </a>
+                <p class="footer-copy">Calendar-first budgeting for students, freelancers, and anyone who wants a cleaner monthly picture.</p>
             </div>
-            <!--
-            <div class="social-links">
-                <a href="#" class="social-link">Github</a>
-                <a href="#" class="social-link">Twitter</a>
-                <a href="#" class="social-link">LinkedIn</a>
+            <div class="footer-links">
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How it works</a>
+                <a href="user-manual">Manual</a>
+                <a href="expense-tracker">Tracker</a>
             </div>
-        -->
+            <p class="footer-meta">Copyright 2026 Tristan Namingit</p>
         </div>
     </footer>
 
     <script>
-        // Navbar reveal on scroll
         const navbar = document.getElementById('navbar');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 50) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
-            }
-        });
-        
-        // Mobile Nav Toggle
         const navToggle = document.getElementById('navToggle');
         const navLinks = document.getElementById('navLinks');
-        
+        const revealElements = document.querySelectorAll('[data-reveal]');
+
+        window.addEventListener('scroll', () => {
+            navbar.classList.toggle('scrolled', window.scrollY > 24);
+        });
+
         if (navToggle && navLinks) {
             navToggle.addEventListener('click', () => {
-                navToggle.classList.toggle('is-active');
-                navLinks.classList.toggle('is-open');
-                document.body.style.overflow = navLinks.classList.contains('is-open') ? 'hidden' : '';
+                const isOpen = navLinks.classList.toggle('is-open');
+                navToggle.classList.toggle('is-active', isOpen);
+                navToggle.setAttribute('aria-expanded', String(isOpen));
+                document.body.classList.toggle('menu-open', isOpen);
             });
-            
-            // Close menu when clicking links
-            const links = navLinks.querySelectorAll('.nav-link, .btn');
-            links.forEach(link => {
+
+            navLinks.querySelectorAll('a').forEach((link) => {
                 link.addEventListener('click', () => {
-                    navToggle.classList.remove('is-active');
                     navLinks.classList.remove('is-open');
-                    document.body.style.overflow = '';
+                    navToggle.classList.remove('is-active');
+                    navToggle.setAttribute('aria-expanded', 'false');
+                    document.body.classList.remove('menu-open');
                 });
             });
         }
 
-        // Scroll reveal animation
-        const revealElements = document.querySelectorAll('[data-reveal]');
         const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
+            entries.forEach((entry) => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('revealed');
                 }
             });
-        }, { threshold: 0.1 });
+        }, { threshold: 0.15 });
 
-        revealElements.forEach(el => observer.observe(el));
-        // Fetch Stats from API
+        revealElements.forEach((element) => observer.observe(element));
+
         async function fetchStats() {
             try {
-                // Ensure we use the correct relative path
                 const response = await fetch('/api/api?action=public_stats');
                 if (!response.ok) throw new Error('API server unreachable');
 
                 const data = await response.json();
                 if (data.user_count !== undefined) {
-                    // Update Active Users with the MAX(id) from the database
-                    document.getElementById('userCountStats').textContent = (data.user_count).toLocaleString() + '+';
-                    // Update Transaction count
-                    document.getElementById('entryCountStats').textContent = (data.entry_count).toLocaleString() + '+';
+                    document.getElementById('userCountStats').textContent = `${data.user_count.toLocaleString()}+`;
+                    document.getElementById('entryCountStats').textContent = `${data.entry_count.toLocaleString()}+`;
                 }
             } catch (error) {
-                console.warn('API stats fetch failed, using realistic mock data:', error);
-                // More realistic fallbacks when the live API fails
+                console.warn('API stats fetch failed, using fallback values:', error);
                 document.getElementById('userCountStats').textContent = '25+';
                 document.getElementById('entryCountStats').textContent = '150+';
             }
         }
+
         fetchStats();
     </script>
+    <script src="js/pwa.js" defer></script>
 </body>
 
 </html>
