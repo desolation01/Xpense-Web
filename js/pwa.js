@@ -1,10 +1,29 @@
 (function () {
   const OFFLINE_CLASS = "is-offline";
   let deferredPrompt = null;
+  let installButton = null;
 
   const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
   const isSafari = /safari/i.test(window.navigator.userAgent) && !/crios|fxios|edgios|chrome/i.test(window.navigator.userAgent);
-  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+
+  function isStandaloneMode() {
+    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  }
+
+  function showIosInstallHelp() {
+    alert('In Safari: tap Share > Add to Home Screen.');
+  }
+
+  function updateInstallButtonVisibility() {
+    if (!installButton) return;
+    if (isStandaloneMode()) {
+      installButton.style.display = "none";
+      return;
+    }
+    const canInstallFromPrompt = Boolean(deferredPrompt);
+    const canInstallFromIos = isIos && isSafari;
+    installButton.style.display = canInstallFromPrompt || canInstallFromIos ? "" : "none";
+  }
 
   function createOfflineIndicator() {
     const indicator = document.createElement("div");
@@ -60,13 +79,29 @@
 
   function setupInstallFlow() {
     const ui = createInstallBanner();
+    installButton = document.getElementById("pwaInstallBtn");
 
-    if (isIos && isSafari && !isStandalone && shouldShowInstallBanner()) {
+    if (installButton) {
+      installButton.addEventListener("click", async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          await deferredPrompt.userChoice;
+          deferredPrompt = null;
+          ui.banner.hidden = true;
+          updateInstallButtonVisibility();
+          return;
+        }
+
+        if (isIos && isSafari && !isStandaloneMode()) {
+          showIosInstallHelp();
+        }
+      });
+    }
+
+    if (isIos && isSafari && !isStandaloneMode() && shouldShowInstallBanner()) {
       ui.text.textContent = 'Install Xpense: tap Share, then "Add to Home Screen".';
       ui.action.textContent = "How to install";
-      ui.action.addEventListener("click", () => {
-        alert('In Safari: tap Share > Add to Home Screen.');
-      });
+      ui.action.addEventListener("click", showIosInstallHelp);
       ui.banner.hidden = false;
     }
 
@@ -74,7 +109,10 @@
       event.preventDefault();
       deferredPrompt = event;
 
-      if (isStandalone || !shouldShowInstallBanner()) return;
+      if (isStandaloneMode() || !shouldShowInstallBanner()) {
+        updateInstallButtonVisibility();
+        return;
+      }
 
       ui.text.textContent = "Install Xpense for a full-screen app experience.";
       ui.action.textContent = "Install";
@@ -84,9 +122,13 @@
         await deferredPrompt.userChoice;
         deferredPrompt = null;
         ui.banner.hidden = true;
+        updateInstallButtonVisibility();
       };
       ui.banner.hidden = false;
+      updateInstallButtonVisibility();
     });
+
+    updateInstallButtonVisibility();
   }
 
   function showUpdateToast(worker) {
