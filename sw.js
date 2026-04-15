@@ -1,4 +1,4 @@
-const SW_VERSION = "xpense-pwa-v1.2.0";
+const SW_VERSION = "xpense-pwa-v1.3.0";
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const DYNAMIC_CACHE = `${SW_VERSION}-dynamic`;
 const API_CACHE = `${SW_VERSION}-api`;
@@ -29,6 +29,8 @@ const APP_SHELL = [
   "/assets/icons/icon-192.png",
   "/assets/icons/icon-512.png",
   "/assets/icons/apple-touch-icon.png",
+  "/assets/screenshots/desktop.png",
+  "/assets/screenshots/mobile.png",
   "/manifest.json"
 ];
 
