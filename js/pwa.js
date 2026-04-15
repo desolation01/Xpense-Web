@@ -14,15 +14,17 @@
     alert('In Safari: tap Share > Add to Home Screen.');
   }
 
+  function showGenericInstallHelp() {
+    alert("To install: open your browser menu and choose 'Install app' or 'Add to Home screen'.");
+  }
+
   function updateInstallButtonVisibility() {
     if (!installButton) return;
     if (isStandaloneMode()) {
       installButton.style.display = "none";
       return;
     }
-    const canInstallFromPrompt = Boolean(deferredPrompt);
-    const canInstallFromIos = isIos && isSafari;
-    installButton.style.display = canInstallFromPrompt || canInstallFromIos ? "" : "none";
+    installButton.style.display = "";
   }
 
   function createOfflineIndicator() {
@@ -94,7 +96,10 @@
 
         if (isIos && isSafari && !isStandaloneMode()) {
           showIosInstallHelp();
+          return;
         }
+
+        showGenericInstallHelp();
       });
     }
 
