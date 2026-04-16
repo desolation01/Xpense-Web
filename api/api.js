@@ -12,6 +12,24 @@ if (!jwtSecret || jwtSecret.length < 32) {
 // Lazy Supabase client — created only when needed so the function
 // loads successfully even when Supabase env vars are not set.
 let _supabase = null;
+function isLikelyServiceRoleKey(key) {
+  const raw = String(key || '').trim();
+  if (!raw) return false;
+  if (raw.startsWith('sb_secret_')) return true;
+
+  // Legacy Supabase service_role keys are JWT-like strings.
+  const parts = raw.split('.');
+  if (parts.length !== 3) return false;
+  try {
+    const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payloadJson = Buffer.from(payloadB64, 'base64').toString('utf8');
+    const payload = JSON.parse(payloadJson);
+    return payload?.role === 'service_role';
+  } catch {
+    return false;
+  }
+}
+
 function getSupabase() {
   if (_supabase) return _supabase;
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -20,7 +38,7 @@ function getSupabase() {
     throw new Error('Missing Supabase environment variables');
   }
   // After RLS hardening, backend must use a service-role style secret key.
-  if (!String(supabaseServiceKey).startsWith('sb_secret_')) {
+  if (!isLikelyServiceRoleKey(supabaseServiceKey)) {
     throw new Error('SUPABASE_SERVICE_KEY is not a secret server key. Update server env configuration.');
   }
   _supabase = createClient(supabaseUrl, supabaseServiceKey, {
