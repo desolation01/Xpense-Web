@@ -33,6 +33,15 @@
     let isFetching = false;
     let pollInterval = null;
 
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
     // Load nickname from localStorage
     chatNickname.value = localStorage.getItem('chat_nickname') || 'Guest' + Math.floor(Math.random() * 900 + 100);
     chatNickname.addEventListener('input', () => {
@@ -65,13 +74,15 @@
     function renderMessages(messages) {
         if (!chatMessages) return;
         chatMessages.innerHTML = messages.map(msg => {
-            const parsedText = (typeof marked !== "undefined" && marked.parse) ? marked.parse(msg.text) : msg.text;
+            const safeUser = escapeHtml(msg.user || 'Anonymous');
+            const safeTime = escapeHtml(msg.time || '');
+            const safeText = escapeHtml(msg.text || '').replace(/\n/g, '<br>');
             return `
                 <div class="chatbot-row assistant">
                     <div class="chatbot-bubble" style="padding: 0.5rem 0.75rem;">
-                        <span style="font-weight: 600; color: var(--color-primary); font-size: 0.8rem;">${msg.user}</span>
-                        <span style="font-size: 0.7rem; color: var(--color-muted-foreground); margin-left: 5px;">${msg.time}</span>
-                        <div style="margin-top: 2px;">${parsedText}</div>
+                        <span style="font-weight: 600; color: var(--color-primary); font-size: 0.8rem;">${safeUser}</span>
+                        <span style="font-size: 0.7rem; color: var(--color-muted-foreground); margin-left: 5px;">${safeTime}</span>
+                        <div style="margin-top: 2px;">${safeText}</div>
                     </div>
                 </div>
             `;

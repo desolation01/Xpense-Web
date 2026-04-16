@@ -1232,7 +1232,8 @@ async function main() {
         .replace(/(\d+%\s*)/g, '<b>$1</b>')          // Bold percentages
         .replace(/(\d{4}-\d{2}-\d{2})/g, '<b>$1</b>'); // Bold dates
 
-      await typeSummaryHtml(summaryDesc, formattedResult);
+      const safeSummary = sanitizeLimitedHtml(formattedResult);
+      summaryDesc.innerHTML = safeSummary;
       summaryDesc.classList.remove("is-typing");
 
     } catch (err) {
@@ -1243,35 +1244,6 @@ async function main() {
       analyzeFinalBtn.disabled = false;
       analyzeFinalBtn.innerHTML = "<span class='ai-spark'>AI</span> Analyze Financials";
     }
-  }
-
-  function typeSummaryHtml(element, html) {
-    return new Promise(resolve => {
-      let i = 0;
-      element.innerHTML = "";
-      const interval = setInterval(() => {
-        if (i < html.length) {
-          if (html[i] === "<") {
-            // Find end of tag
-            const end = html.indexOf(">", i);
-            if (end !== -1) {
-              i = end + 1;
-            }
-          } else {
-            i++;
-          }
-          element.innerHTML = html.substring(0, i);
-          
-          if (i >= html.length) {
-            clearInterval(interval);
-            resolve();
-          }
-        } else {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 15);
-    });
   }
 
   analyzeFinalBtn.addEventListener("click", () => generateFinancialSummary());
@@ -1907,14 +1879,51 @@ async function main() {
     return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
   }
 
+  function sanitizeLimitedHtml(input) {
+    const template = document.createElement("template");
+    template.innerHTML = String(input || "");
+
+    const allowedTags = new Set(["B", "STRONG", "I", "EM", "BR", "SPAN"]);
+    const blockedTags = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "LINK", "META"]);
+
+    const walk = (node) => {
+      const children = Array.from(node.childNodes);
+      for (const child of children) {
+        if (child.nodeType === Node.ELEMENT_NODE) {
+          const tag = child.tagName.toUpperCase();
+          if (blockedTags.has(tag)) {
+            child.remove();
+            continue;
+          }
+          if (!allowedTags.has(tag)) {
+            const textNode = document.createTextNode(child.textContent || "");
+            child.replaceWith(textNode);
+            continue;
+          }
+
+          for (const attr of Array.from(child.attributes)) {
+            const name = attr.name.toLowerCase();
+            if (tag === "SPAN" && name === "class" && child.classList.contains("summary-highlight")) {
+              continue;
+            }
+            child.removeAttribute(attr.name);
+          }
+          walk(child);
+        } else if (child.nodeType === Node.COMMENT_NODE) {
+          child.remove();
+        }
+      }
+    };
+
+    walk(template.content);
+    return template.innerHTML;
+  }
+
   function renderChatText(text) {
-    if (typeof marked !== "undefined" && marked.parse) {
-      return marked.parse(text);
-    }
-    // Fallback if marked is not loaded
     let s = escapeHtml(text);
     s = s.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-    return s.replace(/\n/g, "<br>");
+    s = s.replace(/\n/g, "<br>");
+    return sanitizeLimitedHtml(s);
   }
 
   function initMobileNav() {
