@@ -1,26 +1,53 @@
 {
-    "cleanUrls": true,
-    "redirects": [
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
         {
-            "source": "/expense-tracker.html",
-            "destination": "/expense-tracker",
-            "permanent": true
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
         },
         {
-            "source": "/tracker-login.html",
-            "destination": "/tracker-login",
-            "permanent": true
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
         },
         {
-            "source": "/user-manual.html",
-            "destination": "/user-manual",
-            "permanent": true
-        }
-    ],
-    "rewrites": [
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
         {
-            "source": "/api/(.*)",
-            "destination": "/api/api.js"
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co https://api.groq.com; frame-src 'self'; worker-src 'self' blob:; upgrade-insecure-requests"
         }
-    ]
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/expense-tracker.html",
+      "destination": "/expense-tracker",
+      "permanent": true
+    },
+    {
+      "source": "/tracker-login.html",
+      "destination": "/tracker-login",
+      "permanent": true
+    },
+    {
+      "source": "/user-manual.html",
+      "destination": "/user-manual",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/api.js"
+    }
+  ]
 }
