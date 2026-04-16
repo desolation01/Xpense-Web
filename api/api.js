@@ -19,6 +19,10 @@ function getSupabase() {
   if (!supabaseUrl || !supabaseServiceKey) {
     throw new Error('Missing Supabase environment variables');
   }
+  // After RLS hardening, backend must use a service-role style secret key.
+  if (!String(supabaseServiceKey).startsWith('sb_secret_')) {
+    throw new Error('SUPABASE_SERVICE_KEY is not a secret server key. Update server env configuration.');
+  }
   _supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
@@ -726,6 +730,9 @@ module.exports = async (req, res) => {
 
   } catch (error) {
     console.error('API Error:', error);
+    if (String(error?.message || '').includes('SUPABASE_SERVICE_KEY')) {
+      return res.status(503).json({ error: 'Server database configuration error. Contact admin.' });
+    }
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
