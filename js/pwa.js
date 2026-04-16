@@ -2,12 +2,15 @@
   const OFFLINE_CLASS = "is-offline";
   const AUTO_APPLY_UPDATE_DELAY_MS = 4000;
   const UPDATE_CHECK_INTERVAL_MS = 60 * 1000;
+  const DEPLOY_CHECK_INTERVAL_MS = 60 * 1000;
+  const DEPLOY_VERSION_KEY = "xpense_last_seen_deploy_version";
   const debugMode = new URLSearchParams(window.location.search).has("pwa-debug");
   let deferredPrompt = null;
   let installButton = null;
   let installUi = null;
   let pwaDebug = null;
   let updateTimer = null;
+  let deployCheckTimer = null;
 
   const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
   const isSafari = /safari/i.test(window.navigator.userAgent) && !/crios|fxios|edgios|chrome/i.test(window.navigator.userAgent);
@@ -226,6 +229,61 @@
     updateTimer = window.setTimeout(() => applyUpdate(worker), AUTO_APPLY_UPDATE_DELAY_MS);
   }
 
+  async function clearCachesAndReload() {
+    try {
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => caches.delete(key)));
+      }
+    } catch {
+      // Ignore cache-clear failures and still reload.
+    }
+    window.location.reload();
+  }
+
+  async function forceAppRefreshForDeploy(registration) {
+    if (registration) {
+      try {
+        await registration.update();
+      } catch {
+        // Ignore update errors and fallback to cache clear + reload.
+      }
+      if (registration.waiting) {
+        applyUpdate(registration.waiting);
+        return;
+      }
+    }
+    await clearCachesAndReload();
+  }
+
+  async function checkDeploymentVersion(registration) {
+    try {
+      const response = await fetch("/api/api?action=build_info", {
+        method: "GET",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const deployVersion = String(data?.deploy_version || "").trim();
+      if (!deployVersion) return;
+
+      const previousVersion = localStorage.getItem(DEPLOY_VERSION_KEY);
+      if (!previousVersion) {
+        localStorage.setItem(DEPLOY_VERSION_KEY, deployVersion);
+        return;
+      }
+
+      if (previousVersion !== deployVersion) {
+        localStorage.setItem(DEPLOY_VERSION_KEY, deployVersion);
+        await forceAppRefreshForDeploy(registration);
+      }
+    } catch {
+      // Ignore temporary network/server issues.
+    }
+  }
+
   async function registerServiceWorker() {
     if (!("serviceWorker" in navigator)) return;
 
@@ -293,6 +351,11 @@
       window.setInterval(() => {
         registration.update().catch(() => {});
       }, UPDATE_CHECK_INTERVAL_MS);
+
+      checkDeploymentVersion(registration).catch(() => {});
+      deployCheckTimer = window.setInterval(() => {
+        checkDeploymentVersion(registration).catch(() => {});
+      }, DEPLOY_CHECK_INTERVAL_MS);
 
       let hasRefreshed = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {

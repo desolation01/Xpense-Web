@@ -36,13 +36,6 @@ function getAuthHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function isPwaStandaloneMode() {
-  return Boolean(
-    (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
-    window.navigator.standalone
-  );
-}
-
 function redirectToLogin() {
   const next = encodeURIComponent("/expense-tracker");
   window.location.replace(`./tracker-login?next=${next}`);
@@ -275,7 +268,6 @@ async function main() {
   let chart = null;
   let currentChartType = "pie";
   let currentChartMetric = "all";
-  const isPwaMode = isPwaStandaloneMode();
   let activeUsersPollTimer = null;
 
   const chartTypeSelect = document.getElementById("chartTypeSelect");
@@ -330,17 +322,6 @@ async function main() {
     }, 50);
   };
 
-  function setLocalModeUI() {
-    if (localModeBadge) localModeBadge.style.display = "";
-    if (loginOpenBtn) loginOpenBtn.style.display = "none";
-    if (userStatus) userStatus.style.display = "none";
-    if (logoutBtn) logoutBtn.style.display = "none";
-    if (syncBtn) syncBtn.style.display = "none";
-    if (activeUsersIndicator) activeUsersIndicator.hidden = true;
-    if (activeUsersPollTimer) clearInterval(activeUsersPollTimer);
-    setAppVisible();
-  }
-
   function setLoggedOutUI() {
     if (localModeBadge) localModeBadge.style.display = "none";
     if (loginOpenBtn) loginOpenBtn.style.display = "inline-flex";
@@ -371,14 +352,13 @@ async function main() {
   }
 
   async function refreshActiveUsersCount() {
-    if (isPwaMode) return;
-    const authHeaders = getAuthHeaders();
-    if (!authHeaders.Authorization) {
-      if (activeUsersIndicator) activeUsersIndicator.hidden = true;
-      return;
-    }
-
     try {
+      const authHeaders = getAuthHeaders();
+      if (!authHeaders.Authorization) {
+        if (activeUsersIndicator) activeUsersIndicator.hidden = true;
+        return;
+      }
+
       const response = await fetch("/api/api?action=active_users", {
         method: "GET",
         headers: {
@@ -403,10 +383,6 @@ async function main() {
 
   function startActiveUsersPolling() {
     if (activeUsersPollTimer) clearInterval(activeUsersPollTimer);
-    if (isPwaMode) {
-      if (activeUsersIndicator) activeUsersIndicator.hidden = true;
-      return;
-    }
     refreshActiveUsersCount();
     activeUsersPollTimer = setInterval(refreshActiveUsersCount, 30000);
   }
@@ -416,7 +392,6 @@ async function main() {
   }
 
   async function initialSync() {
-    if (isPwaMode) return;
     const authHeaders = getAuthHeaders();
     if (!authHeaders.Authorization) return;
 
@@ -453,7 +428,6 @@ async function main() {
   }
 
   const triggerSync = async () => {
-    if (isPwaMode) return;
     const authHeaders = getAuthHeaders();
     if (!authHeaders.Authorization) return;
 
@@ -487,11 +461,6 @@ async function main() {
   };
 
   async function initializeAuthMode() {
-    if (isPwaMode) {
-      setLocalModeUI();
-      return;
-    }
-
     if (loginOpenBtn) {
       loginOpenBtn.addEventListener("click", () => {
         window.location.href = "./tracker-login";
@@ -1638,27 +1607,20 @@ async function main() {
   if (syncBtn) syncBtn.addEventListener("click", triggerSync);
   if (logoutBtn) {
     logoutBtn.onclick = async () => {
-      if (!isPwaMode) {
-        try {
-          const token = await fetchCsrfToken();
-          await fetch("/api/api?action=logout", {
-            method: "POST",
-            headers: {
-              "X-CSRF-Token": token || "",
-              ...getAuthHeaders(),
-            },
-          });
-        } catch {}
-      }
+      try {
+        const token = await fetchCsrfToken();
+        await fetch("/api/api?action=logout", {
+          method: "POST",
+          headers: {
+            "X-CSRF-Token": token || "",
+            ...getAuthHeaders(),
+          },
+        });
+      } catch {}
 
       clearAuthToken();
       if (activeUsersPollTimer) clearInterval(activeUsersPollTimer);
-      if (isPwaMode) {
-        setLocalModeUI();
-        window.location.reload();
-      } else {
-        redirectToLogin();
-      }
+      redirectToLogin();
     };
   }
 

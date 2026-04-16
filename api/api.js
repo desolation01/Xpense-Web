@@ -36,6 +36,7 @@ const RATE_LIMIT_RULES = {
   login: { max: 12, windowMs: 15 * 60_000 },
   register: { max: 8, windowMs: 60 * 60_000 },
   chat: { max: 30, windowMs: 60_000 },
+  buildInfo: { max: 180, windowMs: 60_000 },
   syncPost: { max: 20, windowMs: 60_000 },
   default: { max: 120, windowMs: 60_000 }
 };
@@ -79,6 +80,7 @@ function applyRateLimit(req, res, action) {
 
   if (action === 'token') rule = RATE_LIMIT_RULES.token;
   if (action === 'chat' && method === 'POST') rule = RATE_LIMIT_RULES.chat;
+  if (action === 'build_info' && method === 'GET') rule = RATE_LIMIT_RULES.buildInfo;
   if (action === 'register' && method === 'POST') rule = RATE_LIMIT_RULES.register;
   if (action === 'login' && method === 'POST') {
     rule = RATE_LIMIT_RULES.login;
@@ -99,14 +101,31 @@ function markUserActive(userId) {
   ACTIVE_USERS.set(String(userId), Date.now());
 }
 
-function getActiveUsersCount() {
+function getActiveStats() {
   const now = Date.now();
   for (const [userId, lastSeen] of ACTIVE_USERS.entries()) {
     if (now - lastSeen > ACTIVE_WINDOW_MS) {
       ACTIVE_USERS.delete(userId);
     }
   }
-  return ACTIVE_USERS.size;
+
+  const registeredActive = ACTIVE_USERS.size;
+  return {
+    registered_active_users: registeredActive,
+    active_users: registeredActive
+  };
+}
+
+function getDeployVersion() {
+  return (
+    process.env.VERCEL_GIT_COMMIT_SHA ||
+    process.env.VERCEL_DEPLOYMENT_ID ||
+    process.env.RENDER_GIT_COMMIT ||
+    process.env.BUILD_ID ||
+    process.env.RAILWAY_GIT_COMMIT_SHA ||
+    process.env.npm_package_version ||
+    'dev'
+  );
 }
 
 function generateCsrfToken() {
@@ -335,12 +354,20 @@ module.exports = async (req, res) => {
       const totalExpenses = expenseData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
       const totalGains = gainData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
 
+      const activeStats = getActiveStats();
       return res.status(200).json({
         user_count: userCount || 0,
         entry_count: entryCount || 0,
         total_expenses: totalExpenses,
         total_gains: totalGains,
-        active_users: getActiveUsersCount()
+        ...activeStats
+      });
+    }
+
+    if (action === 'build_info' && req.method === 'GET') {
+      return res.status(200).json({
+        deploy_version: getDeployVersion(),
+        server_time: new Date().toISOString(),
       });
     }
 
@@ -350,7 +377,7 @@ module.exports = async (req, res) => {
         return res.status(401).json({ error: 'Unauthorized. Please log in.' });
       }
       markUserActive(auth.userId);
-      return res.status(200).json({ active_users: getActiveUsersCount() });
+      return res.status(200).json(getActiveStats());
     }
 
     if (action === 'logout') {
