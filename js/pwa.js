@@ -5,6 +5,8 @@
   const DEPLOY_CHECK_INTERVAL_MS = 60 * 1000;
   const DEPLOY_VERSION_KEY = "xpense_last_seen_deploy_version";
   const SW_BUILD_KEY = "xpense_sw_build_version";
+  const INSTALL_BANNER_REFRESH_COOLDOWN_KEY = "xpense_install_banner_refresh_cooldown";
+  const INSTALL_BANNER_REFRESH_DELAY = 3;
   const debugMode = new URLSearchParams(window.location.search).has("pwa-debug");
   let deferredPrompt = null;
   let installButton = null;
@@ -158,19 +160,27 @@
 
     close.addEventListener("click", () => {
       banner.hidden = true;
-      localStorage.setItem("xpense_install_banner_dismissed", String(Date.now()));
+      localStorage.setItem(INSTALL_BANNER_REFRESH_COOLDOWN_KEY, String(INSTALL_BANNER_REFRESH_DELAY));
+      localStorage.removeItem("xpense_install_banner_dismissed");
     });
 
     return { banner, text, action };
   }
 
+  function decrementInstallBannerCooldownOnRefresh() {
+    const refreshesLeft = Number(localStorage.getItem(INSTALL_BANNER_REFRESH_COOLDOWN_KEY) || 0);
+    if (refreshesLeft > 0) {
+      localStorage.setItem(INSTALL_BANNER_REFRESH_COOLDOWN_KEY, String(refreshesLeft - 1));
+    }
+  }
+
   function shouldShowInstallBanner() {
-    const dismissedAt = Number(localStorage.getItem("xpense_install_banner_dismissed") || 0);
-    const oneDay = 24 * 60 * 60 * 1000;
-    return Date.now() - dismissedAt > oneDay;
+    const refreshesLeft = Number(localStorage.getItem(INSTALL_BANNER_REFRESH_COOLDOWN_KEY) || 0);
+    return refreshesLeft <= 0;
   }
 
   function setupInstallFlow() {
+    decrementInstallBannerCooldownOnRefresh();
     const ui = createInstallBanner();
     installUi = ui;
     installButton = document.getElementById("pwaInstallBtn");
