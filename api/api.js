@@ -217,6 +217,112 @@ function requireAuth(req) {
   return decoded;
 }
 
+const MAX_TEXT_LEN = 120;
+const MAX_CATEGORY_LEN = 60;
+const MAX_AMOUNT = 1_000_000_000;
+const ALLOWED_ENTRY_TYPES = new Set(['gain', 'expense']);
+const ALLOWED_RECURRING = new Set(['none', 'daily', 'weekly', 'monthly']);
+
+function sanitizePlainText(value, maxLen, fallback = '') {
+  const text = String(value ?? '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .trim()
+    .slice(0, maxLen);
+  return text || fallback;
+}
+
+function parseOptionalNonNegativeNumber(value, fieldName) {
+  if (value === undefined || value === null || value === '') return null;
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < 0 || num > MAX_AMOUNT) {
+    throw new Error(`Invalid ${fieldName}.`);
+  }
+  return Number(num.toFixed(2));
+}
+
+function isIsoDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return false;
+  const [y, m, d] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return (
+    date.getUTCFullYear() === y &&
+    date.getUTCMonth() === m - 1 &&
+    date.getUTCDate() === d
+  );
+}
+
+function normalizeRecurring(value) {
+  const recurring = String(value || 'none').trim().toLowerCase();
+  return ALLOWED_RECURRING.has(recurring) ? recurring : 'none';
+}
+
+function normalizeSyncPayload(payload) {
+  const salary = parseOptionalNonNegativeNumber(payload.salary, 'salary');
+  const budget = parseOptionalNonNegativeNumber(payload.budget, 'budget');
+  const weeklyBudget = parseOptionalNonNegativeNumber(payload.weeklyBudget, 'weekly budget');
+  const entriesByDayRaw = payload.entriesByDay || {};
+
+  if (typeof entriesByDayRaw !== 'object' || entriesByDayRaw === null || Array.isArray(entriesByDayRaw)) {
+    throw new Error('Invalid entries payload.');
+  }
+
+  const normalizedEntriesByDay = {};
+  let normalizedCount = 0;
+
+  for (const [date, dayItems] of Object.entries(entriesByDayRaw)) {
+    if (!isIsoDate(date)) {
+      throw new Error(`Invalid entry date: ${date}`);
+    }
+    if (!Array.isArray(dayItems)) {
+      throw new Error(`Invalid entries format for date: ${date}`);
+    }
+
+    const normalizedItems = [];
+    for (const raw of dayItems) {
+      if (!raw || typeof raw !== 'object') {
+        throw new Error(`Invalid entry object on ${date}.`);
+      }
+
+      const type = String(raw.type || '').trim().toLowerCase();
+      if (!ALLOWED_ENTRY_TYPES.has(type)) {
+        throw new Error(`Invalid entry type on ${date}.`);
+      }
+
+      const amount = Number(raw.amount);
+      if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_AMOUNT) {
+        throw new Error(`Invalid amount on ${date}.`);
+      }
+
+      const label = sanitizePlainText(raw.label, MAX_TEXT_LEN, 'Entry');
+      const category = sanitizePlainText(raw.category, MAX_CATEGORY_LEN, 'Other');
+      const recurring = normalizeRecurring(raw.recurring);
+      const ts = Number.isFinite(Number(raw.ts)) && Number(raw.ts) > 0
+        ? Math.floor(Number(raw.ts))
+        : Date.now();
+
+      normalizedItems.push({
+        type,
+        amount: Number(amount.toFixed(2)),
+        label,
+        category,
+        recurring,
+        ts
+      });
+    }
+
+    if (normalizedItems.length > 0) {
+      normalizedEntriesByDay[date] = normalizedItems;
+      normalizedCount += normalizedItems.length;
+    }
+  }
+
+  if ((Number(payload.entriesCount) || 0) > 0 && normalizedCount === 0) {
+    throw new Error('Entries count mismatch.');
+  }
+
+  return { salary, budget, weeklyBudget, entriesByDay: normalizedEntriesByDay };
+}
+
 // CORS headers
 function corsHeaders(req) {
   const allowedOrigin = resolveAllowedOrigin(req);
@@ -452,16 +558,16 @@ module.exports = async (req, res) => {
           return res.status(403).json({ status: 'error', error: 'Invalid CSRF token.' });
         }
 
-        const { salary, budget, weeklyBudget, entriesByDay = {}, entriesCount } = req.body || {};
-
-        // Validate entries
-        if (entriesCount > 0 && Object.keys(entriesByDay).length === 0) {
+        let normalizedPayload;
+        try {
+          normalizedPayload = normalizeSyncPayload(req.body || {});
+        } catch (validationError) {
           return res.status(400).json({
             status: 'error',
-            error: `Structure mismatch: Client sent count ${entriesCount} but entriesByDay was empty on server (saw ${typeof entriesByDay}).`,
-            keys_received: Object.keys(req.body || {})
+            error: validationError.message || 'Invalid sync payload.'
           });
         }
+        const { salary, budget, weeklyBudget, entriesByDay } = normalizedPayload;
 
         try {
           // Update user settings
@@ -498,12 +604,12 @@ module.exports = async (req, res) => {
               entriesToInsert.push({
                 user_id: userId,
                 entry_date: date,
-                label: item.label || 'Entry',
-                category: item.category || 'Other',
+                label: item.label,
+                category: item.category,
                 entry_type: item.type === 'gain' ? 'gain' : 'expense',
-                amount: parseFloat(item.amount || 0),
-                recurring: item.recurring || 'none',
-                entry_ts: parseInt(item.ts || Date.now())
+                amount: item.amount,
+                recurring: item.recurring,
+                entry_ts: item.ts
               });
             }
           }
@@ -560,16 +666,24 @@ module.exports = async (req, res) => {
         const entriesByDay = {};
         for (const row of (rows || [])) {
           const date = row.entry_date;
+          if (!isIsoDate(date)) continue;
+          const type = ALLOWED_ENTRY_TYPES.has(String(row.entry_type || '').toLowerCase())
+            ? String(row.entry_type).toLowerCase()
+            : 'expense';
+          const amount = Number(row.amount);
+          if (!Number.isFinite(amount) || amount < 0 || amount > MAX_AMOUNT) continue;
           if (!entriesByDay[date]) {
             entriesByDay[date] = [];
           }
           entriesByDay[date].push({
-            label: row.label,
-            category: row.category,
-            type: row.entry_type,
-            amount: parseFloat(row.amount),
-            recurring: Boolean(row.recurring),
-            ts: parseInt(row.entry_ts)
+            label: sanitizePlainText(row.label, MAX_TEXT_LEN, 'Entry'),
+            category: sanitizePlainText(row.category, MAX_CATEGORY_LEN, 'Other'),
+            type,
+            amount: Number(amount.toFixed(2)),
+            recurring: normalizeRecurring(row.recurring),
+            ts: Number.isFinite(Number(row.entry_ts)) && Number(row.entry_ts) > 0
+              ? Math.floor(Number(row.entry_ts))
+              : Date.now()
           });
         }
 

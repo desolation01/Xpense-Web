@@ -1168,6 +1168,8 @@ async function main() {
     };
 
     listEl.innerHTML = latest.map(it => {
+      const safeCategory = escapeHtml(it.category || "Other");
+      const safeLabel = escapeHtml(it.label || "Entry");
       const emoji = EMOJIS[it.category] || "💸";
       const typeAvg = it.type === "gain" ? dailyAvgGain : dailyAvgExpense;
       const diff = typeAvg > 0 ? ((it.amount - typeAvg) / typeAvg) * 100 : 0;
@@ -1189,8 +1191,8 @@ async function main() {
         <div class="transaction-item">
           <div class="transaction-icon-box">${emoji}</div>
           <div class="transaction-info">
-            <span class="transaction-category">${it.category}</span>
-            <span class="transaction-label">${it.label}</span>
+            <span class="transaction-category">${safeCategory}</span>
+            <span class="transaction-label">${safeLabel}</span>
             <span class="transaction-date">${dateStr}</span>
           </div>
           <div class="transaction-stats">
@@ -1967,12 +1969,12 @@ async function main() {
       row.className = "tracker-entry";
       row.innerHTML = `
         <div class="tracker-entry-main">
-          <div class="tracker-entry-label">${it.label} ${it.recurring && it.recurring !== "none" ? "🔄" : ""}</div>
-          <div class="tracker-entry-meta">${it.category} · ${it.type}${it.recurring && it.recurring !== "none" ? ` · ${it.recurring}` : ""}</div>
+          <div class="tracker-entry-label">${escapeHtml(it.label || "Entry")} ${it.recurring && it.recurring !== "none" ? "🔄" : ""}</div>
+          <div class="tracker-entry-meta">${escapeHtml(it.category || "Other")} · ${escapeHtml(it.type || "expense")}${it.recurring && it.recurring !== "none" ? ` · ${escapeHtml(it.recurring || "none")}` : ""}</div>
         </div>
         <div class="tracker-entry-actions">
-           <div class="tracker-entry-amt ${it.type}">${it.type === "gain" ? "+" : "-"}${fmtMoney(it.amount)}</div>
-           <button class="tracker-icon-btn" onclick="deleteEntry('${dateIso}', ${idx})">🗑</button>
+           <div class="tracker-entry-amt ${escapeHtml(it.type || "expense")}">${it.type === "gain" ? "+" : "-"}${fmtMoney(it.amount)}</div>
+           <button class="tracker-icon-btn" onclick="deleteEntry(decodeURIComponent('${encodeURIComponent(dateIso)}'), ${idx})">🗑</button>
         </div>
       `;
       entryList.appendChild(row);
@@ -2352,5 +2354,4 @@ async function main() {
 main().catch((error) => {
   console.error("Failed to initialize tracker.", error);
 });
-
 

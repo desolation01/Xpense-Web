@@ -48,6 +48,16 @@ function h(string) {
     .replace(/'/g, '&#039;');
 }
 
+const MAX_CHAT_TEXT_LEN = 500;
+const MAX_CHAT_USER_LEN = 20;
+
+function sanitizeChatText(value, maxLen) {
+  return String(value ?? '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .trim()
+    .slice(0, maxLen);
+}
+
 // CORS headers
 function corsHeaders() {
   return {
@@ -103,8 +113,8 @@ module.exports = async (req, res) => {
       }
 
       const { text, user = 'Anonymous' } = req.body || {};
-      const trimmedText = (text || '').trim();
-      const trimmedUser = (user || 'Anonymous').trim();
+      const trimmedText = sanitizeChatText(text, MAX_CHAT_TEXT_LEN);
+      const trimmedUser = sanitizeChatText(user, MAX_CHAT_USER_LEN) || 'Anonymous';
 
       if (!trimmedText) {
         return res.status(400).json({ status: 'error', message: 'Empty text' });
