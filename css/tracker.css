@@ -1614,6 +1614,11 @@
   color: var(--color-background-foreground);
 }
 
+.chatbot-close svg {
+  width: 14px;
+  height: 14px;
+}
+
 .chatbot-messages {
   display: flex;
   flex-direction: column;
