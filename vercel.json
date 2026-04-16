@@ -1,5 +1,22 @@
 {
     "cleanUrls": true,
+    "redirects": [
+        {
+            "source": "/expense-tracker.html",
+            "destination": "/expense-tracker",
+            "permanent": true
+        },
+        {
+            "source": "/tracker-login.html",
+            "destination": "/tracker-login",
+            "permanent": true
+        },
+        {
+            "source": "/user-manual.html",
+            "destination": "/user-manual",
+            "permanent": true
+        }
+    ],
     "rewrites": [
         {
             "source": "/api/(.*)",

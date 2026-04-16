@@ -22,10 +22,10 @@ Clean route-first static structure for fast navigation and maintenance.
 - `dev-server.js` - local dev server
 
 ## Backward Compatibility
-Legacy files are preserved as redirects:
-- `expense-tracker.html` -> `/expense-tracker`
-- `tracker-login.html` -> `/tracker-login`
-- `user-manual.html` -> `/user-manual`
+Legacy `.html` paths are redirected in `vercel.json`:
+- `/expense-tracker.html` -> `/expense-tracker`
+- `/tracker-login.html` -> `/tracker-login`
+- `/user-manual.html` -> `/user-manual`
 
 ## Local Development
 ```bash
