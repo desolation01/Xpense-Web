@@ -25,7 +25,7 @@
     const chatToggle = document.querySelector('#globalChatToggle');
     
     if (!chatPanel || !chatToggle) {
-        console.error("Global Chat elements missing!", {panel: !!chatPanel, toggle: !!chatToggle});
+        // Global chat trigger is optional in this layout.
         return;
     }
 
