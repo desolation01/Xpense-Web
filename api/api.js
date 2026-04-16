@@ -12,8 +12,27 @@ if (!jwtSecret || jwtSecret.length < 32) {
 // Lazy Supabase client — created only when needed so the function
 // loads successfully even when Supabase env vars are not set.
 let _supabase = null;
+function stripWrappingQuotes(value) {
+  const raw = String(value || '').trim();
+  if (
+    (raw.startsWith('"') && raw.endsWith('"')) ||
+    (raw.startsWith("'") && raw.endsWith("'"))
+  ) {
+    return raw.slice(1, -1).trim();
+  }
+  return raw;
+}
+
+function getSupabaseEnv() {
+  const supabaseUrl = stripWrappingQuotes(process.env.SUPABASE_URL);
+  const supabaseServiceKey = stripWrappingQuotes(
+    process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+  return { supabaseUrl, supabaseServiceKey };
+}
+
 function isLikelyServiceRoleKey(key) {
-  const raw = String(key || '').trim();
+  const raw = stripWrappingQuotes(key);
   if (!raw) return false;
   if (raw.startsWith('sb_secret_')) return true;
 
@@ -32,14 +51,13 @@ function isLikelyServiceRoleKey(key) {
 
 function getSupabase() {
   if (_supabase) return _supabase;
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+  const { supabaseUrl, supabaseServiceKey } = getSupabaseEnv();
   if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Missing Supabase environment variables');
+    throw new Error('Missing Supabase environment variables. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_SERVICE_ROLE_KEY).');
   }
   // After RLS hardening, backend must use a service-role style secret key.
   if (!isLikelyServiceRoleKey(supabaseServiceKey)) {
-    throw new Error('SUPABASE_SERVICE_KEY is not a secret server key. Update server env configuration.');
+    throw new Error('SUPABASE_SERVICE_KEY is not a secret server key. Use your Supabase Secret/Service Role key (not sb_publishable_).');
   }
   _supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
@@ -748,7 +766,7 @@ module.exports = async (req, res) => {
 
   } catch (error) {
     console.error('API Error:', error);
-    if (String(error?.message || '').includes('SUPABASE_SERVICE_KEY')) {
+    if (String(error?.message || '').includes('SUPABASE_SERVICE_KEY') || String(error?.message || '').includes('Missing Supabase environment variables')) {
       return res.status(503).json({ error: 'Server database configuration error. Contact admin.' });
     }
     return res.status(500).json({ error: 'Internal server error' });
