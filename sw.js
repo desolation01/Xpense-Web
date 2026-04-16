@@ -9,6 +9,7 @@ const MAX_DYNAMIC_ENTRIES = 120;
 const APP_SHELL = [
   "/",
   "/index.html",
+  "/tracker-login",
   "/expense-tracker",
   "/user-manual",
   "/css/tokens.css",

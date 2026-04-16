@@ -1,7 +1,7 @@
 // ============================================
 //  tracker-auth-page.js
-//  Login/Register page logic for tracker-login.html
-//  On success: redirects to expense-tracker.html
+//  Login/Register page logic for /tracker-login
+//  On success: redirects to /expense-tracker
 // ============================================
 
 const AUTH_TOKEN_KEY = 'auth_token';
@@ -40,7 +40,7 @@ async function fetchCsrfToken() {
     .then(r => r.json())
     .then(data => {
       if (data && data.logged_in) {
-        window.location.replace('./expense-tracker');
+        window.location.replace('/expense-tracker');
       }
     })
     .catch(() => {});
@@ -145,12 +145,12 @@ authForm.onsubmit = async (e) => {
             const loginData = await loginRes.json();
             if (loginData.token) setAuthToken(loginData.token, loginData.username);
           } catch (_) {}
-          window.location.replace('./expense-tracker');
+          window.location.replace('/expense-tracker');
         }
       }, 1000);
     } else {
       if (data.token) setAuthToken(data.token, data.username);
-      window.location.replace('./expense-tracker');
+      window.location.replace('/expense-tracker');
     }
   } catch (err) {
     authError.textContent = err.message || 'Connection failed. Is the server running?';

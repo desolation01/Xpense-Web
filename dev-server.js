@@ -156,8 +156,8 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`\nServer running at http://localhost:${PORT}`);
-  console.log(`   Login:      http://localhost:${PORT}/tracker-login.html`);
-  console.log(`   Tracker:    http://localhost:${PORT}/expense-tracker.html`);
+  console.log(`   Login:      http://localhost:${PORT}/tracker-login`);
+  console.log(`   Tracker:    http://localhost:${PORT}/expense-tracker`);
   console.log(`   Portfolio:  http://localhost:${PORT}/`);
   console.log('Press Ctrl+C to stop\n');
 });

@@ -40,7 +40,7 @@ function getAuthHeaders() {
 
 function redirectToLogin() {
   const next = encodeURIComponent("/expense-tracker");
-  window.location.replace(`./tracker-login?next=${next}`);
+  window.location.replace(`/tracker-login?next=${next}`);
 }
 
 async function hydrateFromLocalStore() {
@@ -597,7 +597,7 @@ async function main() {
   async function initializeAuthMode() {
     if (loginOpenBtn) {
       loginOpenBtn.addEventListener("click", () => {
-        window.location.href = "./tracker-login";
+        window.location.href = "/tracker-login";
       });
     }
 
