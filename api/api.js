@@ -30,7 +30,6 @@ const crypto = require('crypto');
 const csrfSecret = jwtSecret;
 
 const RATE_LIMIT_STORE = new Map();
-const ACTIVE_USERS = new Map();
 const RATE_LIMIT_RULES = {
   token: { max: 60, windowMs: 60_000 },
   login: { max: 12, windowMs: 15 * 60_000 },
@@ -41,7 +40,7 @@ const RATE_LIMIT_RULES = {
   default: { max: 120, windowMs: 60_000 }
 };
 
-const ACTIVE_WINDOW_MS = 5 * 60 * 1000;
+const ACTIVE_WINDOW_SECONDS = 120;
 
 function getClientIp(req) {
   const forwarded = req.headers['x-forwarded-for'];
@@ -96,23 +95,37 @@ function applyRateLimit(req, res, action) {
   return null;
 }
 
-function markUserActive(userId) {
+async function touchActiveUser(userId) {
   if (!userId) return;
-  ACTIVE_USERS.set(String(userId), Date.now());
+  const now = Math.floor(Date.now() / 1000);
+  await getSupabase()
+    .from('online_users')
+    .upsert({
+      user_id: String(userId),
+      last_seen: now
+    }, {
+      onConflict: 'user_id'
+    });
 }
 
-function getActiveStats() {
-  const now = Date.now();
-  for (const [userId, lastSeen] of ACTIVE_USERS.entries()) {
-    if (now - lastSeen > ACTIVE_WINDOW_MS) {
-      ACTIVE_USERS.delete(userId);
-    }
-  }
+async function getActiveStats() {
+  const now = Math.floor(Date.now() / 1000);
+  const staleThreshold = now - ACTIVE_WINDOW_SECONDS;
 
-  const registeredActive = ACTIVE_USERS.size;
+  // Cleanup stale presence rows first.
+  await getSupabase()
+    .from('online_users')
+    .delete()
+    .lt('last_seen', staleThreshold);
+
+  const { count } = await getSupabase()
+    .from('online_users')
+    .select('*', { count: 'exact', head: true });
+
+  const registeredActive = count || 0;
   return {
     registered_active_users: registeredActive,
-    active_users: registeredActive
+    active_users: registeredActive,
   };
 }
 
@@ -325,7 +338,6 @@ module.exports = async (req, res) => {
     if (action === 'status') {
       const auth = requireAuth(req);
       if (auth) {
-        markUserActive(auth.userId);
         return res.status(200).json({ logged_in: true, username: auth.username, userId: auth.userId });
       } else {
         return res.status(200).json({ logged_in: false });
@@ -354,7 +366,7 @@ module.exports = async (req, res) => {
       const totalExpenses = expenseData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
       const totalGains = gainData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
 
-      const activeStats = getActiveStats();
+      const activeStats = await getActiveStats();
       return res.status(200).json({
         user_count: userCount || 0,
         entry_count: entryCount || 0,
@@ -376,8 +388,9 @@ module.exports = async (req, res) => {
       if (!auth) {
         return res.status(401).json({ error: 'Unauthorized. Please log in.' });
       }
-      markUserActive(auth.userId);
-      return res.status(200).json(getActiveStats());
+      await touchActiveUser(auth.userId);
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
+      return res.status(200).json(await getActiveStats());
     }
 
     if (action === 'logout') {
@@ -430,7 +443,6 @@ module.exports = async (req, res) => {
     }
 
     const userId = auth.userId;
-    markUserActive(userId);
 
     // 3. DATA SYNC
     if (action === 'sync') {

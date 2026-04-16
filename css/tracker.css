@@ -1904,6 +1904,52 @@
   flex-shrink: 0;
 }
 
+.hero-privacy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.55rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 80%, rgba(255, 255, 255, 0.12));
+  background: color-mix(in srgb, var(--color-surface) 82%, rgba(14, 22, 39, 0.76));
+  color: var(--color-muted-foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard);
+}
+
+.hero-privacy-btn:hover {
+  color: var(--color-background-foreground);
+  border-color: color-mix(in srgb, var(--color-primary) 65%, var(--color-border));
+}
+
+.hero-privacy-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.hero-privacy-btn .hero-eye-off {
+  display: none;
+}
+
+.hero-privacy-btn.is-masked {
+  color: #f97316;
+  border-color: color-mix(in srgb, #f97316 52%, var(--color-border));
+}
+
+.hero-privacy-btn.is-masked .hero-eye-on {
+  display: none;
+}
+
+.hero-privacy-btn.is-masked .hero-eye-off {
+  display: block;
+}
+
 .tracker-hero .edit-budget-btn:hover {
   opacity: 1;
   background: color-mix(in srgb, var(--color-accent) 10%, var(--color-muted));
@@ -1921,10 +1967,58 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--sp-4) var(--sp-5);
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--sp-3);
   transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.mini-privacy-btn {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.5rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 80%, rgba(255, 255, 255, 0.12));
+  background: color-mix(in srgb, var(--color-surface) 82%, rgba(14, 22, 39, 0.82));
+  color: var(--color-muted-foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard);
+}
+
+.mini-privacy-btn:hover {
+  color: var(--color-background-foreground);
+  border-color: color-mix(in srgb, var(--color-primary) 65%, var(--color-border));
+  background: color-mix(in srgb, var(--color-surface) 70%, rgba(109, 90, 205, 0.24));
+}
+
+.mini-privacy-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.mini-privacy-btn .mini-eye-off {
+  display: none;
+}
+
+.mini-privacy-btn.is-masked {
+  color: #f97316;
+  border-color: color-mix(in srgb, #f97316 52%, var(--color-border));
+}
+
+.mini-privacy-btn.is-masked .mini-eye-on {
+  display: none;
+}
+
+.mini-privacy-btn.is-masked .mini-eye-off {
+  display: block;
 }
 
 .tracker-mini-stat:hover {
@@ -2135,6 +2229,13 @@
     align-items: flex-start;
     padding: var(--sp-4) var(--sp-5);
     gap: var(--sp-4);
+  }
+
+  .hero-privacy-btn {
+    top: 0.35rem;
+    right: 0.4rem;
+    width: 24px;
+    height: 24px;
   }
 
   .tracker-hero-right {
@@ -2452,6 +2553,13 @@
   .tracker-mini-stat {
     padding: var(--sp-3) var(--sp-3);
     gap: var(--sp-2);
+  }
+
+  .mini-privacy-btn {
+    top: 0.35rem;
+    right: 0.35rem;
+    width: 24px;
+    height: 24px;
   }
 
   .tracker-mini-icon {

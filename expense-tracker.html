@@ -131,25 +131,35 @@
 
               <!-- ── HERO BANNER & EXTRA ── -->
               <div class="tracker-hero-row">
-                <div class="tracker-hero" id="trackerHero" style="margin-bottom: 0;">
+                <div class="tracker-hero" id="trackerHero" style="margin-bottom: 0;" data-hero-card="summary">
+                  <button class="hero-privacy-btn" type="button" id="heroPrivacyToggle" aria-label="Hide hero summary values" title="Hide values">
+                    <svg class="hero-eye-on" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <circle cx="12" cy="12" r="2.8" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                    <svg class="hero-eye-off" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M3 3l18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M2 12s3.8-6.5 10-6.5c1.6 0 3 .4 4.3 1.1M22 12s-3.8 6.5-10 6.5c-1.6 0-3-.4-4.3-1.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </button>
                   <div class="tracker-hero-left">
                     <p class="tracker-hero-label">Total Remaining</p>
-                    <p class="tracker-hero-amount" id="remainingDisplay">₱0.00</p>
+                    <p class="tracker-hero-amount" id="remainingDisplay" data-hero-maskable>₱0.00</p>
                   </div>
                   <div class="tracker-hero-right">
                     <div class="tracker-hero-stat">
                       <p class="tracker-hero-stat-label" style="text-transform: uppercase;">Spent this month</p>
-                      <p class="tracker-hero-stat-val" id="monthExpDisplayHero">₱0.00</p>
+                      <p class="tracker-hero-stat-val" id="monthExpDisplayHero" data-hero-maskable>₱0.00</p>
                     </div>
                     <div class="tracker-hero-divider"></div>
                     <div class="tracker-hero-stat">
                       <p class="tracker-hero-stat-label" style="text-transform: uppercase;">Spent this week</p>
-                      <p class="tracker-hero-stat-val" id="weekExpDisplayHero">₱0.00</p>
+                      <p class="tracker-hero-stat-val" id="weekExpDisplayHero" data-hero-maskable>₱0.00</p>
                     </div>
                     <div class="tracker-hero-divider"></div>
                     <div class="tracker-hero-stat">
                       <p class="tracker-hero-stat-label">Salary</p>
-                      <p class="tracker-hero-stat-val" id="salaryDisplay">₱0.00</p>
+                      <p class="tracker-hero-stat-val" id="salaryDisplay" data-hero-maskable>₱0.00</p>
                       <p class="tracker-hero-stat-delta">Monthly income</p>
                     </div>
                     <button class="btn btn-small btn-ghost edit-budget-btn" id="editBudgetBtn"
@@ -198,7 +208,17 @@
 
               <!-- ── MINI STATS ── -->
               <div class="tracker-mini-stats">
-                <div class="tracker-mini-stat tracker-mini-stat--green">
+                <div class="tracker-mini-stat tracker-mini-stat--green" data-mini-card="monthly">
+                  <button class="mini-privacy-btn" type="button" data-mini-privacy-toggle="monthly" aria-label="Hide monthly budget card values" title="Hide values">
+                    <svg class="mini-eye-on" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <circle cx="12" cy="12" r="2.8" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                    <svg class="mini-eye-off" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M3 3l18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M2 12s3.8-6.5 10-6.5c1.6 0 3 .4 4.3 1.1M22 12s-3.8 6.5-10 6.5c-1.6 0-3-.4-4.3-1.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </button>
                   <div class="tracker-mini-icon tracker-mini-icon--green">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                       stroke-linecap="round" stroke-linejoin="round">
@@ -208,21 +228,31 @@
                   </div>
                   <div style="flex: 1; min-width: 0;">
                     <p class="tracker-mini-label">MONTHLY BUDGET REMAINING</p>
-                    <p class="tracker-mini-val tracker-mini-val--green" id="savingsDisplay">₱0.00</p>
+                    <p class="tracker-mini-val tracker-mini-val--green" id="savingsDisplay" data-maskable>₱0.00</p>
                     <div style="margin-top: 0.5rem;">
                       <div class="tracker-hero-bar-wrap">
                         <div class="tracker-hero-bar-bg" style="height: 4px;">
                           <div class="tracker-hero-bar-fill" id="heroBudgetBar" style="width:0%"></div>
                         </div>
                         <div class="tracker-hero-bar-labels" style="font-size: 0.65rem; padding-top: 0.25rem;">
-                          <span id="heroSpentLabel">₱0.00 spent</span>
-                          <span id="heroPctLabel">0% used</span>
+                          <span id="heroSpentLabel" data-maskable>₱0.00 spent</span>
+                          <span id="heroPctLabel" data-maskable>0% used</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div class="tracker-mini-stat tracker-mini-stat--blue">
+                <div class="tracker-mini-stat tracker-mini-stat--blue" data-mini-card="weekly">
+                  <button class="mini-privacy-btn" type="button" data-mini-privacy-toggle="weekly" aria-label="Hide weekly budget card values" title="Hide values">
+                    <svg class="mini-eye-on" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <circle cx="12" cy="12" r="2.8" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                    <svg class="mini-eye-off" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M3 3l18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M2 12s3.8-6.5 10-6.5c1.6 0 3 .4 4.3 1.1M22 12s-3.8 6.5-10 6.5c-1.6 0-3-.4-4.3-1.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </button>
                   <div class="tracker-mini-icon tracker-mini-icon--blue">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                       stroke-linecap="round" stroke-linejoin="round">
@@ -234,7 +264,7 @@
                   </div>
                   <div style="flex: 1; min-width: 0;">
                     <p class="tracker-mini-label" style="text-transform: uppercase;">WEEKLY BUDGET REMAINING</p>
-                    <p class="tracker-mini-val" id="weekBudgetMiniDisplay">₱0.00</p>
+                    <p class="tracker-mini-val" id="weekBudgetMiniDisplay" data-maskable>₱0.00</p>
                     <div style="margin-top: 0.5rem;">
                       <div class="tracker-hero-bar-wrap">
                         <div class="tracker-hero-bar-bg" style="height: 4px;">
@@ -242,14 +272,24 @@
                           </div>
                         </div>
                         <div class="tracker-hero-bar-labels" style="font-size: 0.65rem; padding-top: 0.25rem;">
-                          <span id="weekSpentLabel">₱0.00 spent</span>
-                          <span id="weekPctLabel">0% used</span>
+                          <span id="weekSpentLabel" data-maskable>₱0.00 spent</span>
+                          <span id="weekPctLabel" data-maskable>0% used</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div class="tracker-mini-stat tracker-mini-stat--red">
+                <div class="tracker-mini-stat tracker-mini-stat--red" data-mini-card="total">
+                  <button class="mini-privacy-btn" type="button" data-mini-privacy-toggle="total" aria-label="Hide total spent card values" title="Hide values">
+                    <svg class="mini-eye-on" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <circle cx="12" cy="12" r="2.8" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                    <svg class="mini-eye-off" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M3 3l18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M2 12s3.8-6.5 10-6.5c1.6 0 3 .4 4.3 1.1M22 12s-3.8 6.5-10 6.5c-1.6 0-3-.4-4.3-1.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </button>
                   <div class="tracker-mini-icon tracker-mini-icon--red">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                       stroke-linecap="round" stroke-linejoin="round">
@@ -258,7 +298,7 @@
                   </div>
                   <div>
                     <p class="tracker-mini-label">Total Spent</p>
-                    <p class="tracker-mini-val" id="totalSpentDisplay">₱0.00</p>
+                    <p class="tracker-mini-val" id="totalSpentDisplay" data-maskable>₱0.00</p>
                   </div>
                 </div>
               </div>

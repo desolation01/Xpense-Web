@@ -12,6 +12,8 @@ const TRACKER_STORAGE_DEFAULTS = {
 
 const AUTH_TOKEN_KEY = "auth_token";
 const AUTH_USER_KEY = "auth_username";
+const MINI_PRIVACY_STATE_KEY = "xpense_mini_privacy_state_v1";
+const HERO_PRIVACY_STATE_KEY = "xpense_hero_privacy_state_v1";
 
 // --- SECURITY & CSRF ---
 let csrfToken = null;
@@ -210,6 +212,8 @@ async function main() {
   const localModeBadge = document.getElementById("localModeBadge");
   const activeUsersIndicator = document.getElementById("activeUsersIndicator");
   const activeUsersCount = document.getElementById("activeUsersCount");
+  const miniPrivacyButtons = Array.from(document.querySelectorAll("[data-mini-privacy-toggle]"));
+  const heroPrivacyToggle = document.getElementById("heroPrivacyToggle");
   
   const trackerHeader = document.getElementById("trackerHeader");
 
@@ -269,6 +273,12 @@ async function main() {
   let currentChartType = "pie";
   let currentChartMetric = "all";
   let activeUsersPollTimer = null;
+  let miniPrivacyState = {
+    monthly: false,
+    weekly: false,
+    total: false,
+  };
+  let heroPrivacyMasked = false;
 
   const chartTypeSelect = document.getElementById("chartTypeSelect");
   const chartMetricSelect = document.getElementById("chartMetricSelect");
@@ -322,6 +332,113 @@ async function main() {
     }, 50);
   };
 
+  function loadMiniPrivacyState() {
+    try {
+      const raw = localStorage.getItem(MINI_PRIVACY_STATE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      miniPrivacyState = {
+        monthly: Boolean(parsed?.monthly),
+        weekly: Boolean(parsed?.weekly),
+        total: Boolean(parsed?.total),
+      };
+    } catch {
+      miniPrivacyState = { monthly: false, weekly: false, total: false };
+    }
+  }
+
+  function saveMiniPrivacyState() {
+    localStorage.setItem(MINI_PRIVACY_STATE_KEY, JSON.stringify(miniPrivacyState));
+  }
+
+  function maskValueText(value) {
+    return String(value || "").replace(/[0-9]/g, "*");
+  }
+
+  function applyMiniCardMask(cardKey) {
+    const card = document.querySelector(`[data-mini-card="${cardKey}"]`);
+    if (!card) return;
+
+    const isMasked = Boolean(miniPrivacyState[cardKey]);
+    const targets = card.querySelectorAll("[data-maskable]");
+    targets.forEach((target) => {
+      if (isMasked) {
+        target.dataset.rawValue = target.textContent;
+        target.textContent = maskValueText(target.textContent);
+      } else if (typeof target.dataset.rawValue === "string") {
+        target.textContent = target.dataset.rawValue;
+      }
+    });
+
+    const toggle = card.querySelector("[data-mini-privacy-toggle]");
+    if (toggle) {
+      toggle.classList.toggle("is-masked", isMasked);
+      toggle.setAttribute("aria-pressed", String(isMasked));
+      toggle.setAttribute("title", isMasked ? "Show values" : "Hide values");
+    }
+  }
+
+  function applyAllMiniCardMasks() {
+    applyMiniCardMask("monthly");
+    applyMiniCardMask("weekly");
+    applyMiniCardMask("total");
+  }
+
+  function initMiniPrivacyToggles() {
+    loadMiniPrivacyState();
+    miniPrivacyButtons.forEach((button) => {
+      const key = button.getAttribute("data-mini-privacy-toggle");
+      if (!key) return;
+      button.addEventListener("click", () => {
+        miniPrivacyState[key] = !miniPrivacyState[key];
+        saveMiniPrivacyState();
+        applyMiniCardMask(key);
+      });
+    });
+    applyAllMiniCardMasks();
+  }
+
+  function loadHeroPrivacyState() {
+    heroPrivacyMasked = localStorage.getItem(HERO_PRIVACY_STATE_KEY) === "1";
+  }
+
+  function saveHeroPrivacyState() {
+    localStorage.setItem(HERO_PRIVACY_STATE_KEY, heroPrivacyMasked ? "1" : "0");
+  }
+
+  function applyHeroMask() {
+    const heroCard = document.querySelector("[data-hero-card='summary']");
+    if (!heroCard) return;
+
+    const targets = heroCard.querySelectorAll("[data-hero-maskable]");
+    targets.forEach((target) => {
+      if (heroPrivacyMasked) {
+        target.dataset.rawValue = target.textContent;
+        target.textContent = maskValueText(target.textContent);
+      } else if (typeof target.dataset.rawValue === "string") {
+        target.textContent = target.dataset.rawValue;
+      }
+    });
+
+    if (heroPrivacyToggle) {
+      heroPrivacyToggle.classList.toggle("is-masked", heroPrivacyMasked);
+      heroPrivacyToggle.setAttribute("aria-pressed", String(heroPrivacyMasked));
+      heroPrivacyToggle.setAttribute("title", heroPrivacyMasked ? "Show values" : "Hide values");
+    }
+  }
+
+  function initHeroPrivacyToggle() {
+    loadHeroPrivacyState();
+    if (heroPrivacyToggle) {
+      heroPrivacyToggle.addEventListener("click", () => {
+        heroPrivacyMasked = !heroPrivacyMasked;
+        saveHeroPrivacyState();
+        applyHeroMask();
+      });
+    }
+    applyHeroMask();
+  }
+
   function setLoggedOutUI() {
     if (localModeBadge) localModeBadge.style.display = "none";
     if (loginOpenBtn) loginOpenBtn.style.display = "inline-flex";
@@ -359,8 +476,9 @@ async function main() {
         return;
       }
 
-      const response = await fetch("/api/api?action=active_users", {
+      const response = await fetch(`/api/api?action=active_users&t=${Date.now()}`, {
         method: "GET",
+        cache: "no-store",
         headers: {
           Accept: "application/json",
           ...authHeaders,
@@ -384,7 +502,13 @@ async function main() {
   function startActiveUsersPolling() {
     if (activeUsersPollTimer) clearInterval(activeUsersPollTimer);
     refreshActiveUsersCount();
-    activeUsersPollTimer = setInterval(refreshActiveUsersCount, 30000);
+    activeUsersPollTimer = setInterval(refreshActiveUsersCount, 10000);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        refreshActiveUsersCount();
+      }
+    });
+    window.addEventListener("online", refreshActiveUsersCount);
   }
 
   function countEntries(entries) {
@@ -503,6 +627,8 @@ async function main() {
   }
 
   await initializeAuthMode();
+  initMiniPrivacyToggles();
+  initHeroPrivacyToggle();
   startActiveUsersPolling();
 
   salaryForm.addEventListener("submit", (e) => {
@@ -646,6 +772,8 @@ async function main() {
       if (_weekSpentLabel) _weekSpentLabel.textContent = fmtMoney(weeklyExp) + ' spent';
       if (_weekPctLabel) _weekPctLabel.textContent = _weekPct + '% used';
     }
+    applyAllMiniCardMasks();
+    applyHeroMask();
   }
 
   function sumMonthExpenses(entries, year, month) {
