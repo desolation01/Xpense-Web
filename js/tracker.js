@@ -1209,7 +1209,7 @@ async function main() {
   }
 
   function updateFinalSummary(currentTotal, y, m) {
-    if (!finalSummaryCard) return;
+    if (!finalSummaryCard || !summaryMonthName || !summaryTotalVal || !summaryTrendBadge || !summaryTrendText) return;
 
     // Previous Month Total
     const prevDate = new Date(y, m - 1, 1);
@@ -1300,15 +1300,17 @@ async function main() {
     return total;
   }
 
-  summaryTrendBadge.addEventListener("click", () => {
-    badgeMode = badgeMode === "percent" ? "absolute" : "percent";
-    const y = viewDate.getFullYear();
-    const m = viewDate.getMonth();
-    const currentItems = sumMonthExpenses(entriesByDay, y, m);
-    const prevDate = new Date(y, m - 1, 1);
-    const prevTotal = sumMonthExpenses(entriesByDay, prevDate.getFullYear(), prevDate.getMonth());
-    updateTrendBadgeText(currentItems - prevTotal, prevTotal > 0 ? ((currentItems - prevTotal) / prevTotal) * 100 : 0);
-  });
+  if (summaryTrendBadge) {
+    summaryTrendBadge.addEventListener("click", () => {
+      badgeMode = badgeMode === "percent" ? "absolute" : "percent";
+      const y = viewDate.getFullYear();
+      const m = viewDate.getMonth();
+      const currentItems = sumMonthExpenses(entriesByDay, y, m);
+      const prevDate = new Date(y, m - 1, 1);
+      const prevTotal = sumMonthExpenses(entriesByDay, prevDate.getFullYear(), prevDate.getMonth());
+      updateTrendBadgeText(currentItems - prevTotal, prevTotal > 0 ? ((currentItems - prevTotal) / prevTotal) * 100 : 0);
+    });
+  }
 
   async function generateFinancialSummary() {
     if (!analyzeFinalBtn || !summaryDesc) return;
