@@ -1,4 +1,6 @@
-const SW_VERSION = "xpense-pwa-v1.4.2";
+const swUrl = new URL(self.location.href);
+const SW_BUILD = swUrl.searchParams.get("build") || "dev";
+const SW_VERSION = `xpense-pwa-${SW_BUILD}`;
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const DYNAMIC_CACHE = `${SW_VERSION}-dynamic`;
 const API_CACHE = `${SW_VERSION}-api`;

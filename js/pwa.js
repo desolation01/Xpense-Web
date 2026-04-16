@@ -1,9 +1,10 @@
 (function () {
   const OFFLINE_CLASS = "is-offline";
-  const AUTO_APPLY_UPDATE_DELAY_MS = 4000;
+  const AUTO_APPLY_UPDATE_DELAY_MS = 12000;
   const UPDATE_CHECK_INTERVAL_MS = 60 * 1000;
   const DEPLOY_CHECK_INTERVAL_MS = 60 * 1000;
   const DEPLOY_VERSION_KEY = "xpense_last_seen_deploy_version";
+  const SW_BUILD_KEY = "xpense_sw_build_version";
   const debugMode = new URLSearchParams(window.location.search).has("pwa-debug");
   let deferredPrompt = null;
   let installButton = null;
@@ -11,6 +12,8 @@
   let pwaDebug = null;
   let updateTimer = null;
   let deployCheckTimer = null;
+  let activeRegistration = null;
+  let currentSwBuildVersion = null;
 
   const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
   const isSafari = /safari/i.test(window.navigator.userAgent) && !/crios|fxios|edgios|chrome/i.test(window.navigator.userAgent);
@@ -215,69 +218,98 @@
     const toast = document.createElement("div");
     toast.id = "pwa-update-toast";
     toast.innerHTML = `
-      <span>New version available. Updating...</span>
+      <span>New version available.</span>
       <button id="pwa-update-refresh" class="btn btn-small btn-primary" type="button">Refresh</button>
+      <button id="pwa-update-later" class="btn btn-small btn-ghost" type="button">Later</button>
     `;
     document.body.appendChild(toast);
 
     const refreshBtn = toast.querySelector("#pwa-update-refresh");
+    const laterBtn = toast.querySelector("#pwa-update-later");
     refreshBtn.addEventListener("click", () => {
       applyUpdate(worker);
+    });
+    laterBtn.addEventListener("click", () => {
+      toast.remove();
     });
 
     if (updateTimer) window.clearTimeout(updateTimer);
     updateTimer = window.setTimeout(() => applyUpdate(worker), AUTO_APPLY_UPDATE_DELAY_MS);
   }
 
-  async function clearCachesAndReload() {
-    try {
-      if ("caches" in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map((key) => caches.delete(key)));
-      }
-    } catch {
-      // Ignore cache-clear failures and still reload.
-    }
-    window.location.reload();
-  }
-
-  async function forceAppRefreshForDeploy(registration) {
-    if (registration) {
-      try {
-        await registration.update();
-      } catch {
-        // Ignore update errors and fallback to cache clear + reload.
-      }
-      if (registration.waiting) {
-        applyUpdate(registration.waiting);
-        return;
-      }
-    }
-    await clearCachesAndReload();
-  }
-
-  async function checkDeploymentVersion(registration) {
+  async function fetchDeployVersion() {
     try {
       const response = await fetch("/api/api?action=build_info", {
         method: "GET",
         cache: "no-store",
         headers: { Accept: "application/json" },
       });
-      if (!response.ok) return;
+      if (!response.ok) return null;
 
       const data = await response.json();
       const deployVersion = String(data?.deploy_version || "").trim();
+      return deployVersion || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function getSwBuildVersion(fetchedVersion) {
+    if (fetchedVersion) return fetchedVersion;
+    const rememberedVersion = localStorage.getItem(SW_BUILD_KEY);
+    if (rememberedVersion) return rememberedVersion;
+    return "dev";
+  }
+
+  async function registerVersionedServiceWorker(deployVersion) {
+    const swBuildVersion = getSwBuildVersion(deployVersion);
+    const registration = await navigator.serviceWorker.register(`/sw.js?build=${encodeURIComponent(swBuildVersion)}`, {
+      scope: "/",
+      updateViaCache: "none",
+    });
+    currentSwBuildVersion = swBuildVersion;
+    localStorage.setItem(SW_BUILD_KEY, swBuildVersion);
+    activeRegistration = registration;
+    return registration;
+  }
+
+  async function onDeployVersionChanged(nextVersion) {
+    const registration = await registerVersionedServiceWorker(nextVersion);
+    const installing = registration.installing;
+    if (installing) {
+      installing.addEventListener("statechange", () => {
+        if (installing.state === "installed" && navigator.serviceWorker.controller) {
+          showUpdateToast(registration.waiting || installing);
+        }
+      });
+    }
+    if (registration.waiting) {
+      showUpdateToast(registration.waiting);
+      return;
+    }
+    await registration.update();
+    if (registration.waiting) {
+      showUpdateToast(registration.waiting);
+    }
+  }
+
+  async function checkDeploymentVersion() {
+    try {
+      const deployVersion = await fetchDeployVersion();
       if (!deployVersion) return;
 
       const previousVersion = localStorage.getItem(DEPLOY_VERSION_KEY);
       if (!previousVersion) {
         localStorage.setItem(DEPLOY_VERSION_KEY, deployVersion);
+        if (!currentSwBuildVersion) {
+          currentSwBuildVersion = deployVersion;
+        }
         return;
       }
 
       if (previousVersion !== deployVersion) {
         localStorage.setItem(DEPLOY_VERSION_KEY, deployVersion);
-        await forceAppRefreshForDeploy(registration);
+        await onDeployVersionChanged(deployVersion);
       }
     } catch {
       // Ignore temporary network/server issues.
@@ -288,10 +320,11 @@
     if (!("serviceWorker" in navigator)) return;
 
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js", {
-        scope: "/",
-        updateViaCache: "none",
-      });
+      const deployVersion = await fetchDeployVersion();
+      if (deployVersion) {
+        localStorage.setItem(DEPLOY_VERSION_KEY, deployVersion);
+      }
+      const registration = await registerVersionedServiceWorker(deployVersion);
 
       // If no controller yet (first visit or after clear), wait for the SW
       // to activate and then reload once so clients.claim() takes effect.
@@ -339,22 +372,28 @@
       listenForUpdate();
 
       window.addEventListener("online", () => {
-        registration.update().catch(() => {});
+        if (activeRegistration) {
+          activeRegistration.update().catch(() => {});
+        }
       });
 
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
-          registration.update().catch(() => {});
+          if (activeRegistration) {
+            activeRegistration.update().catch(() => {});
+          }
         }
       });
 
       window.setInterval(() => {
-        registration.update().catch(() => {});
+        if (activeRegistration) {
+          activeRegistration.update().catch(() => {});
+        }
       }, UPDATE_CHECK_INTERVAL_MS);
 
-      checkDeploymentVersion(registration).catch(() => {});
+      checkDeploymentVersion().catch(() => {});
       deployCheckTimer = window.setInterval(() => {
-        checkDeploymentVersion(registration).catch(() => {});
+        checkDeploymentVersion().catch(() => {});
       }, DEPLOY_CHECK_INTERVAL_MS);
 
       let hasRefreshed = false;

@@ -89,4 +89,12 @@ body.is-offline #offline-indicator {
   .pwa-install-actions .btn {
     width: 100%;
   }
+
+  #pwa-update-toast {
+    width: calc(100% - 24px);
+    max-width: 420px;
+    border-radius: 14px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
 }

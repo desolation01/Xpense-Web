@@ -1345,15 +1345,21 @@ async function main() {
         }
       }
 
-      const topCategory = Object.entries(categoryMap).sort((a, b) => b[1] - a[1])[0] || ["N/A", 0];
-      
-      const prompt = `
-        Analyze my ${monthName} ${y} financials in detail:
-        - Total Spent: PHP {total}
-        - Top Category: ${topCategory[0]} (PHP {topCategory[1]})
-        - Highest Spending Day: ${maxDayStr} (PHP {maxDayVal})
-        - Monthly Budget: PHP {budget || "Not set"}
-        - Monthly Salary: PHP {salary || "Not set"}
+	      const topCategory = Object.entries(categoryMap).sort((a, b) => b[1] - a[1])[0] || ["N/A", 0];
+	      const topCategoryAmount = Number(topCategory[1] || 0);
+	      const totalSpentText = total.toLocaleString("en-US", { maximumFractionDigits: 2 });
+	      const topCategoryText = topCategoryAmount.toLocaleString("en-US", { maximumFractionDigits: 2 });
+	      const maxDaySpentText = maxDayVal.toLocaleString("en-US", { maximumFractionDigits: 2 });
+	      const monthlyBudgetText = Number.isFinite(budget) ? Number(budget).toLocaleString("en-US", { maximumFractionDigits: 2 }) : "Not set";
+	      const monthlySalaryText = Number.isFinite(salary) ? Number(salary).toLocaleString("en-US", { maximumFractionDigits: 2 }) : "Not set";
+	      
+	      const prompt = `
+	        Analyze my ${monthName} ${y} financials in detail:
+	        - Total Spent: PHP ${totalSpentText}
+	        - Top Category: ${topCategory[0]} (PHP ${topCategoryText})
+	        - Highest Spending Day: ${maxDayStr || "N/A"} (PHP ${maxDaySpentText})
+	        - Monthly Budget: PHP ${monthlyBudgetText}
+	        - Monthly Salary: PHP ${monthlySalaryText}
 
         Provide a structured financial review:
         1. Performance Summary: Include specific percentages (e.g., "% of budget utilized", "% of salary spent", and "Top category share %").
