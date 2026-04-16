@@ -363,9 +363,13 @@ async function main() {
     const targets = card.querySelectorAll("[data-maskable]");
     targets.forEach((target) => {
       if (isMasked) {
-        target.dataset.rawValue = target.textContent;
-        target.textContent = maskValueText(target.textContent);
-      } else if (typeof target.dataset.rawValue === "string") {
+        const currentText = String(target.textContent || "");
+        if (!currentText.includes("*")) {
+          target.dataset.rawValue = currentText;
+        }
+        const baseValue = typeof target.dataset.rawValue === "string" ? target.dataset.rawValue : currentText;
+        target.textContent = maskValueText(baseValue);
+      } else if (String(target.textContent || "").includes("*") && typeof target.dataset.rawValue === "string") {
         target.textContent = target.dataset.rawValue;
       }
     });
@@ -413,9 +417,13 @@ async function main() {
     const targets = heroCard.querySelectorAll("[data-hero-maskable]");
     targets.forEach((target) => {
       if (heroPrivacyMasked) {
-        target.dataset.rawValue = target.textContent;
-        target.textContent = maskValueText(target.textContent);
-      } else if (typeof target.dataset.rawValue === "string") {
+        const currentText = String(target.textContent || "");
+        if (!currentText.includes("*")) {
+          target.dataset.rawValue = currentText;
+        }
+        const baseValue = typeof target.dataset.rawValue === "string" ? target.dataset.rawValue : currentText;
+        target.textContent = maskValueText(baseValue);
+      } else if (String(target.textContent || "").includes("*") && typeof target.dataset.rawValue === "string") {
         target.textContent = target.dataset.rawValue;
       }
     });
