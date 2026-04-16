@@ -504,7 +504,7 @@
 
           <label class="field">
             <span class="field-label">Label</span>
-            <input class="field-input" id="entryLabel" placeholder="e.g. Lunch at Cafe" required />
+            <input class="field-input" id="entryLabel" placeholder="e.g. Lunch at Cafe (optional)" />
           </label>
 
           <div class="tracker-entry-row">
@@ -519,8 +519,12 @@
                 <option value="Entertainment">Entertainment</option>
                 <option value="Health">Health</option>
                 <option value="Salary">Salary</option>
-                <option value="Other">Other</option>
+                <option value="__custom__">Add Custom</option>
               </select>
+            </label>
+            <label class="field" id="entryCategoryCustomWrap" style="display:none;">
+              <span class="field-label">Custom category</span>
+              <input class="field-input" id="entryCategoryCustom" placeholder="e.g. Pets, Gifts, Travel" />
             </label>
             <label class="field">
               <span class="field-label">Frequency</span>
@@ -567,7 +571,6 @@
                 <option value="Entertainment">Entertainment</option>
                 <option value="Health">Health</option>
                 <option value="Salary">Salary</option>
-                <option value="Other">Other</option>
               </select>
             </label>
             <label class="field">

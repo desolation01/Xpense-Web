@@ -293,6 +293,8 @@ async function main() {
   const entryAmount = document.getElementById("entryAmount");
   const entryLabel = document.getElementById("entryLabel");
   const entryCategory = document.getElementById("entryCategory");
+  const entryCategoryCustomWrap = document.getElementById("entryCategoryCustomWrap");
+  const entryCategoryCustom = document.getElementById("entryCategoryCustom");
   const entryRecurring = document.getElementById("entryRecurring");
 
   const batchDeleteOpenBtn = document.getElementById("batchDeleteOpenBtn");
@@ -1760,18 +1762,41 @@ async function main() {
     };
   }
 
+  function updateCategoryCustomVisibility() {
+    const isCustom = entryCategory && entryCategory.value === "__custom__";
+    if (entryCategoryCustomWrap) {
+      entryCategoryCustomWrap.style.display = isCustom ? "" : "none";
+    }
+    if (!isCustom && entryCategoryCustom) {
+      entryCategoryCustom.value = "";
+    }
+  }
+
+  if (entryCategory) {
+    entryCategory.addEventListener("change", updateCategoryCustomVisibility);
+    updateCategoryCustomVisibility();
+  }
+
   entryForm.addEventListener("submit", (e) => {
     e.preventDefault();
     if (!activeDateIso) return;
+    const sanitizedLabel = entryLabel.value.trim() || "Entry";
+    const isCustomCategory = entryCategory.value === "__custom__";
+    const customCategoryValue = (entryCategoryCustom && entryCategoryCustom.value ? entryCategoryCustom.value.trim() : "");
+    if (isCustomCategory && !customCategoryValue) {
+      if (entryCategoryCustom) entryCategoryCustom.focus();
+      return;
+    }
+
     const item = {
       type: entryType.value,
       amount: parseMoney(entryAmount.value),
-      label: entryLabel.value.trim(),
-      category: entryCategory.value,
+      label: sanitizedLabel,
+      category: isCustomCategory ? customCategoryValue : entryCategory.value,
       recurring: entryRecurring.value,
       ts: Date.now()
     };
-    if (!item.amount || !item.label) return;
+    if (!item.amount) return;
 
     if (!entriesByDay[activeDateIso]) entriesByDay[activeDateIso] = [];
     entriesByDay[activeDateIso].push(item);
@@ -1807,6 +1832,9 @@ async function main() {
 
     entryAmount.value = "";
     entryLabel.value = "";
+    if (entryCategoryCustom) entryCategoryCustom.value = "";
+    if (entryCategory) entryCategory.value = "General";
+    updateCategoryCustomVisibility();
     saveAndRefresh();
     renderEntriesModal(activeDateIso);
   });
