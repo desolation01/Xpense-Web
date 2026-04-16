@@ -3,6 +3,16 @@ const STORAGE_BUDGET = "expense_tracker_budget";
 const STORAGE_WEEKLY_BUDGET = "expense_tracker_weekly_budget";
 const STORAGE_ENTRIES = "expense_tracker_entries_v2";
 
+const TRACKER_STORAGE_DEFAULTS = {
+  [STORAGE_SALARY]: null,
+  [STORAGE_BUDGET]: null,
+  [STORAGE_WEEKLY_BUDGET]: null,
+  [STORAGE_ENTRIES]: {},
+};
+
+const AUTH_TOKEN_KEY = "auth_token";
+const AUTH_USER_KEY = "auth_username";
+
 // --- SECURITY & CSRF ---
 let csrfToken = null;
 async function fetchCsrfToken() {
@@ -17,35 +27,76 @@ async function fetchCsrfToken() {
   }
 }
 
-// --- JWT AUTH ---
-const AUTH_TOKEN_KEY = 'auth_token';
-const AUTH_USER_KEY = 'auth_username';
-
-function getAuthToken() {
-  return localStorage.getItem(AUTH_TOKEN_KEY);
-}
-
-function setAuthToken(token, username) {
-  localStorage.setItem(AUTH_TOKEN_KEY, token);
-  localStorage.setItem(AUTH_USER_KEY, username);
-}
-
 function clearAuthToken() {
   localStorage.removeItem(AUTH_TOKEN_KEY);
   localStorage.removeItem(AUTH_USER_KEY);
-  localStorage.removeItem(STORAGE_SALARY);
-  localStorage.removeItem(STORAGE_BUDGET);
-  localStorage.removeItem(STORAGE_WEEKLY_BUDGET);
-  localStorage.removeItem(STORAGE_ENTRIES);
+}
+function getAuthHeaders() {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function getAuthHeaders() {
-  const token = getAuthToken();
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
+function isPwaStandaloneMode() {
+  return Boolean(
+    (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+    window.navigator.standalone
+  );
+}
+
+function redirectToLogin() {
+  const next = encodeURIComponent("/expense-tracker");
+  window.location.replace(`./tracker-login?next=${next}`);
+}
+
+async function hydrateFromLocalStore() {
+  if (!window.localDataStore) return;
+
+  try {
+    await window.localDataStore.seedDefaults(TRACKER_STORAGE_DEFAULTS);
+
+    const keys = [STORAGE_SALARY, STORAGE_BUDGET, STORAGE_WEEKLY_BUDGET, STORAGE_ENTRIES];
+    for (const key of keys) {
+      const idbValue = await window.localDataStore.getData(key);
+      const localRaw = localStorage.getItem(key);
+
+      if ((typeof idbValue === "undefined" || idbValue === null) && localRaw !== null) {
+        const migrated = key === STORAGE_ENTRIES ? JSON.parse(localRaw || "{}") : Number(localRaw);
+        if (key === STORAGE_ENTRIES) {
+          await window.localDataStore.saveData(key, migrated && typeof migrated === "object" ? migrated : {});
+        } else if (Number.isFinite(migrated)) {
+          await window.localDataStore.saveData(key, migrated);
+        }
+        continue;
+      }
+
+      if (typeof idbValue !== "undefined") {
+        if (idbValue === null) {
+          localStorage.removeItem(key);
+        } else if (key === STORAGE_ENTRIES) {
+          localStorage.setItem(key, JSON.stringify(idbValue));
+        } else {
+          localStorage.setItem(key, String(idbValue));
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("Local store hydration failed, continuing with localStorage fallback.", error);
+  }
+}
+
+function mirrorToPrimaryStore(key, value) {
+  if (!window.localDataStore) return;
+
+  if (value === null || typeof value === "undefined") {
+    window.localDataStore.deleteData(key).catch(() => {});
+    return;
+  }
+
+  window.localDataStore.saveData(key, value).catch(() => {});
 }
 
 function fmtMoney(n) {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "--";
   return new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
@@ -81,15 +132,33 @@ function loadBudget() {
 }
 
 function saveSalary(n) {
+  if (!Number.isFinite(n)) {
+    localStorage.removeItem(STORAGE_SALARY);
+    mirrorToPrimaryStore(STORAGE_SALARY, null);
+    return;
+  }
   localStorage.setItem(STORAGE_SALARY, String(n));
+  mirrorToPrimaryStore(STORAGE_SALARY, n);
 }
 
 function saveBudget(n) {
+  if (!Number.isFinite(n)) {
+    localStorage.removeItem(STORAGE_BUDGET);
+    mirrorToPrimaryStore(STORAGE_BUDGET, null);
+    return;
+  }
   localStorage.setItem(STORAGE_BUDGET, String(n));
+  mirrorToPrimaryStore(STORAGE_BUDGET, n);
 }
 
 function saveWeeklyBudget(n) {
+  if (!Number.isFinite(n)) {
+    localStorage.removeItem(STORAGE_WEEKLY_BUDGET);
+    mirrorToPrimaryStore(STORAGE_WEEKLY_BUDGET, null);
+    return;
+  }
   localStorage.setItem(STORAGE_WEEKLY_BUDGET, String(n));
+  mirrorToPrimaryStore(STORAGE_WEEKLY_BUDGET, n);
 }
 
 function loadWeeklyBudget() {
@@ -103,17 +172,16 @@ function loadEntries() {
     const raw = localStorage.getItem(STORAGE_ENTRIES);
     if (!raw) return {};
     let obj = JSON.parse(raw);
-    
+
     // Ensure it's a standard object, not an array.
-    // JSON.stringify behaves differently on arrays when using string keys (like dates).
     if (Array.isArray(obj)) {
       const converted = {};
       Object.keys(obj).forEach(k => {
-        if (isNaN(k)) converted[k] = obj[k]; // Copy named keys
+        if (isNaN(k)) converted[k] = obj[k];
       });
       return converted;
     }
-    
+
     return obj && typeof obj === "object" ? obj : {};
   } catch {
     return {};
@@ -121,10 +189,12 @@ function loadEntries() {
 }
 
 function saveEntries(obj) {
-  localStorage.setItem(STORAGE_ENTRIES, JSON.stringify(obj));
+  const safe = obj && typeof obj === "object" ? obj : {};
+  localStorage.setItem(STORAGE_ENTRIES, JSON.stringify(safe));
+  mirrorToPrimaryStore(STORAGE_ENTRIES, safe);
 }
 
-function main() {
+async function main() {
   const salaryCard = document.getElementById("salaryCard");
   const calendarCard = document.getElementById("calendarCard");
   const trackerGrid = document.getElementById("trackerGrid");
@@ -144,6 +214,7 @@ function main() {
   const logoutBtn = document.getElementById("logoutBtn");
   const userStatus = document.getElementById("userStatus");
   const usernameDisplay = document.getElementById("usernameDisplay");
+  const localModeBadge = document.getElementById("localModeBadge");
   
   const trackerHeader = document.getElementById("trackerHeader");
 
@@ -156,7 +227,9 @@ function main() {
 
   const searchInput = document.getElementById("searchInput");
   const exportBtn = document.getElementById("exportBtn");
+  const exportJsonBtn = document.getElementById("exportJsonBtn");
   const importFile = document.getElementById("importFile");
+  const importJsonFile = document.getElementById("importJsonFile");
   const weeklyBreakdownList = document.getElementById("weeklyBreakdownList");
   const monthlyTotalValue = document.getElementById("monthlyTotalValue");
 
@@ -185,6 +258,7 @@ function main() {
     return;
   }
 
+  await hydrateFromLocalStore();
   let entriesByDay = loadEntries();
   let salary = loadSalary();
   let budget = loadBudget();
@@ -199,6 +273,7 @@ function main() {
   let chart = null;
   let currentChartType = "pie";
   let currentChartMetric = "all";
+  const isPwaMode = isPwaStandaloneMode();
 
   const chartTypeSelect = document.getElementById("chartTypeSelect");
   const chartMetricSelect = document.getElementById("chartMetricSelect");
@@ -243,98 +318,167 @@ function main() {
     });
   }
 
-  async function checkAuthStatus() {
-    try {
-      const token = getAuthToken();
-      if (token) {
-        // Verify token is still valid
-        const res = await fetch("/api/api?action=status", {
-          headers: {
-            "Accept": "application/json",
-            ...getAuthHeaders()
-          }
-        });
-        const data = await res.json();
-        if (data && data.logged_in) {
-          setLoggedInUI(data.username);
-          initialSync();
-        } else {
-          clearAuthToken();
-          window.location.replace('./tracker-login.html');
-        }
-      } else {
-        window.location.replace('./tracker-login.html');
-      }
-    } catch (e) {
-      console.error("Auth status check failed.", e);
-      // On network error, still show the app if token exists (offline mode)
-      const token = getAuthToken();
-      if (token) {
-        const username = localStorage.getItem('auth_username') || 'User';
-        setLoggedInUI(username);
-      } else {
-        window.location.replace('./tracker-login.html');
-      }
-    }
-  }
-
-  function setLoggedInUI(username) {
-    loginOpenBtn.style.display = "none";
-    userStatus.style.display = "flex";
-    usernameDisplay.textContent = username;
-    syncBtn.style.display = "flex";
-    
+  const setAppVisible = () => {
     trackerHeader.style.display = "block";
     trackerMain.style.display = "block";
     setTimeout(() => {
       trackerHeader.classList.add("is-visible");
       trackerMain.classList.add("is-visible");
     }, 50);
+  };
+
+  function setLocalModeUI() {
+    if (localModeBadge) localModeBadge.style.display = "";
+    if (loginOpenBtn) loginOpenBtn.style.display = "none";
+    if (userStatus) userStatus.style.display = "none";
+    if (logoutBtn) logoutBtn.style.display = "none";
+    if (syncBtn) syncBtn.style.display = "none";
+    setAppVisible();
   }
 
-  // Initial Sync from server
-  async function initialSync() {
-    syncBtn.innerHTML = "⌛";
-    try {
-      const res = await fetch("/api/api?action=sync", {
-        headers: getAuthHeaders()
-      });
-      if (res.ok) {
-        const data = await res.json();
-        
-        // Merge or Overwrite?
-        // Server is source of truth, but ONLY if it actually returned data.
-        const serverHasData = (data.salary !== null || Object.keys(data.entriesByDay || {}).length > 0);
-        const localHasEntries = (Object.keys(entriesByDay || {}).length > 0);
+  function setLoggedOutUI() {
+    if (localModeBadge) localModeBadge.style.display = "none";
+    if (loginOpenBtn) loginOpenBtn.style.display = "inline-flex";
+    if (userStatus) userStatus.style.display = "none";
+    if (logoutBtn) logoutBtn.style.display = "none";
+    if (syncBtn) syncBtn.style.display = "none";
+    setAppVisible();
+  }
 
-        if (serverHasData) {
-          // Cloud is non-empty: Accept cloud as truth
-          entriesByDay = data.entriesByDay || {};
-          salary = data.salary;
-          budget = data.budget;
-          weeklyBudget = data.weeklyBudget;
-          saveEntries(entriesByDay);
-          saveSalary(salary);
-          saveBudget(budget);
-          saveWeeklyBudget(weeklyBudget);
-        } else if (localHasEntries) {
-          // Cloud is empty, but local has data: Push local to Cloud!
-          triggerSync();
-        }
-        
-        ensureSetupState();
-        syncBtn.innerHTML = "✅";
+  function setLoggedInUI(username) {
+    if (localModeBadge) localModeBadge.style.display = "none";
+    if (loginOpenBtn) loginOpenBtn.style.display = "none";
+    if (userStatus) userStatus.style.display = "flex";
+    if (logoutBtn) logoutBtn.style.display = "inline-flex";
+    if (syncBtn) syncBtn.style.display = "inline-flex";
+    if (usernameDisplay) usernameDisplay.textContent = username || localStorage.getItem(AUTH_USER_KEY) || "User";
+    if (username) localStorage.setItem(AUTH_USER_KEY, username);
+    setAppVisible();
+  }
+
+  function countEntries(entries) {
+    return Object.values(entries || {}).reduce((sum, dayItems) => sum + (Array.isArray(dayItems) ? dayItems.length : 0), 0);
+  }
+
+  async function initialSync() {
+    if (isPwaMode) return;
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders.Authorization) return;
+
+    try {
+      const response = await fetch("/api/api?action=sync", {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          ...authHeaders,
+        },
+      });
+
+      if (response.status === 401) {
+        clearAuthToken();
+        setLoggedOutUI();
+        return;
       }
-    } catch (e) {
-      console.log("Initial sync failed.");
-      syncBtn.innerHTML = "☁️";
-    } finally {
-      setTimeout(() => { syncBtn.innerHTML = "☁️"; }, 2000);
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      salary = Number.isFinite(Number(data.salary)) ? Number(data.salary) : null;
+      budget = Number.isFinite(Number(data.budget)) ? Number(data.budget) : null;
+      weeklyBudget = Number.isFinite(Number(data.weeklyBudget)) ? Number(data.weeklyBudget) : null;
+      entriesByDay = data.entriesByDay && typeof data.entriesByDay === "object" ? data.entriesByDay : {};
+
+      saveSalary(salary);
+      saveBudget(budget);
+      saveWeeklyBudget(weeklyBudget);
+      saveEntries(entriesByDay);
+    } catch (error) {
+      console.warn("Initial sync skipped due to connection issue.", error);
     }
   }
 
-  // Auto-run status check
-  checkAuthStatus();
+  const triggerSync = async () => {
+    if (isPwaMode) return;
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders.Authorization) return;
+
+    try {
+      const token = await fetchCsrfToken();
+      if (!token) return;
+
+      const response = await fetch("/api/api?action=sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": token,
+          ...authHeaders,
+        },
+        body: JSON.stringify({
+          salary,
+          budget,
+          weeklyBudget,
+          entriesByDay,
+          entriesCount: countEntries(entriesByDay),
+        }),
+      });
+
+      if (response.status === 401) {
+        clearAuthToken();
+        setLoggedOutUI();
+      }
+    } catch (error) {
+      console.warn("Background sync failed.", error);
+    }
+  };
+
+  async function initializeAuthMode() {
+    if (isPwaMode) {
+      setLocalModeUI();
+      return;
+    }
+
+    if (loginOpenBtn) {
+      loginOpenBtn.addEventListener("click", () => {
+        window.location.href = "./tracker-login";
+      });
+    }
+
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders.Authorization) {
+      redirectToLogin();
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/api?action=status", {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          ...authHeaders,
+        },
+      });
+
+      if (!response.ok) {
+        clearAuthToken();
+        redirectToLogin();
+        return;
+      }
+
+      const data = await response.json();
+      if (data.logged_in) {
+        setLoggedInUI(data.username || localStorage.getItem(AUTH_USER_KEY) || "User");
+        await initialSync();
+      } else {
+        clearAuthToken();
+        redirectToLogin();
+      }
+    } catch (error) {
+      console.warn("Auth status check failed.", error);
+      redirectToLogin();
+    }
+  }
+
+  await initializeAuthMode();
 
   salaryForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -369,66 +513,6 @@ function main() {
   const monthNames = Array.from({ length: 12 }, (_, i) =>
     new Date(2000, i, 1).toLocaleString(undefined, { month: "long" })
   );
-
-  const triggerSync = async () => {
-    if (!usernameDisplay.textContent) return; 
-    syncBtn.disabled = true;
-    syncBtn.classList.add("is-syncing");
-    try {
-      const token = await fetchCsrfToken();
-      // Safeguard: Ensure we are sending the current global state
-      // Final sanity check: ensure we are not sending an array with string keys
-      let currentEntries = typeof entriesByDay !== 'undefined' ? entriesByDay : {};
-      if (Array.isArray(currentEntries)) {
-        const fixed = {};
-        Object.keys(currentEntries).forEach(k => fixed[k] = currentEntries[k]);
-        currentEntries = fixed;
-      }
-
-      const res = await fetch("/api/api?action=sync", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": token,
-          ...getAuthHeaders()
-        },
-        body: JSON.stringify({
-          entriesByDay: currentEntries,
-          entriesCount: Object.keys(currentEntries).length,
-          salary, budget, weeklyBudget
-        })
-      });
-
-      if (!res.ok) {
-        let errText = await res.text();
-        try {
-          const errJson = JSON.parse(errText);
-          if (errJson.error) errText = errJson.error;
-        } catch(e) {}
-        throw new Error(errText.substring(0, 200));
-      }
-
-      const data = await res.json();
-      console.log("Sync Response:", data);
-      
-      if (data.status === "success") {
-        syncBtn.innerHTML = "✅";
-      } else {
-        throw new Error(data.error || "Unknown sync error");
-      }
-
-      syncBtn.innerHTML = "✅";
-    } catch (err) {
-      console.error("Auto-sync failed:", err);
-      alert("Sync Error: " + err.message);
-      syncBtn.innerHTML = "❌";
-    } finally {
-      setTimeout(() => { 
-        syncBtn.classList.remove("is-syncing"); 
-        syncBtn.disabled = false; 
-      }, 1000);
-    }
-  };
 
   function saveAndRefresh() {
     saveEntries(entriesByDay);
@@ -475,15 +559,15 @@ function main() {
     const monthBudgetRemain = budget ? (budget - monthExp) : 0;
     const weekBudgetRemain = weeklyBudget ? (weeklyBudget - weeklyExp) : 0;
 
-    if (salaryDisplay) salaryDisplay.textContent = salary == null ? "—" : fmtMoney(salary);
+    if (salaryDisplay) salaryDisplay.textContent = salary == null ? "--" : fmtMoney(salary);
     
     if (budgetDisplay) {
-      budgetDisplay.textContent = budget ? fmtMoney(monthBudgetRemain) : "—";
+      budgetDisplay.textContent = budget ? fmtMoney(monthBudgetRemain) : "--";
       budgetDisplay.classList.toggle("negative", budget && monthBudgetRemain < 0);
     }
     
     if (weeklyBudgetDisplay) {
-      weeklyBudgetDisplay.textContent = weeklyBudget ? fmtMoney(weekBudgetRemain) : "—";
+      weeklyBudgetDisplay.textContent = weeklyBudget ? fmtMoney(weekBudgetRemain) : "--";
       weeklyBudgetDisplay.classList.toggle("negative", weeklyBudget && weekBudgetRemain < 0);
     }
 
@@ -529,7 +613,7 @@ function main() {
         _totalSpentDisplay.textContent = fmtMoney(lifetimeSpent);
       }
       if (_weekBudgetMiniDisplay) {
-        _weekBudgetMiniDisplay.textContent = weeklyBudget ? fmtMoney(weekBudgetRemain) : '—';
+        _weekBudgetMiniDisplay.textContent = weeklyBudget ? fmtMoney(weekBudgetRemain) : "--";
         _weekBudgetMiniDisplay.classList.toggle("negative", weekBudgetRemain < 0);
       }
       const _weekPct = weeklyBudget > 0 ? Math.min(100, Math.round((weeklyExp / weeklyBudget) * 100)) : 0;
@@ -590,6 +674,15 @@ function main() {
     renderWeeklyBreakdown();
   }
 
+  function getThemeColor(tokenName, fallback) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(tokenName).trim();
+    return value || fallback;
+  }
+
+  function isLightThemeActive() {
+    return document.documentElement.getAttribute("data-theme") === "light";
+  }
+
   function renderPieChart(ctx) {
     const y = viewDate.getFullYear();
     const m = viewDate.getMonth();
@@ -611,6 +704,12 @@ function main() {
 
     if (labels.length === 0) return;
 
+    const isLightTheme = isLightThemeActive();
+    const legendColor = getThemeColor("--color-background-foreground", isLightTheme ? "#263143" : "#F8FAFC");
+    const piePalette = isLightTheme
+      ? ["#6f8199", "#7ca18f", "#bd7d86", "#8a97bb", "#9d8cb5", "#8fa0ac", "#b59e7f", "#829ec4"]
+      : ["#7c5cff", "#5ae4ff", "#ff4d6d", "#2dd4bf", "#facc15", "#8b5cf6", "#ec4899", "#3b82f6"];
+
     chart = new Chart(ctx, {
       type: "pie",
       plugins: [ChartDataLabels],
@@ -618,14 +717,14 @@ function main() {
         labels: labels,
         datasets: [{
           data: data,
-          backgroundColor: ["#7c5cff", "#5ae4ff", "#ff4d6d", "#2dd4bf", "#facc15", "#8b5cf6", "#ec4899", "#3b82f6"]
+          backgroundColor: piePalette
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: "bottom", labels: { color: "#fff" } },
+          legend: { position: "bottom", labels: { color: legendColor } },
           tooltip: {
             callbacks: {
               label: (context) => {
@@ -637,7 +736,8 @@ function main() {
             }
           },
           datalabels: {
-            color: '#fff',
+            display: !isLightTheme,
+            color: isLightTheme ? "#2b3648" : "#fff",
             formatter: (value, ctx) => {
               const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
               const pct = ((value / total) * 100).toFixed(1) + "%";
@@ -686,19 +786,24 @@ function main() {
       cumBalance.push((salary || 0) + curGain - curExp);
     }
 
+    const isLightTheme = isLightThemeActive();
+    const axisColor = getThemeColor("--color-muted-foreground", "#5f6d80");
+    const gridColor = isLightTheme ? "rgba(95, 109, 128, 0.14)" : "rgba(0,0,0,0.05)";
+    const legendColor = getThemeColor("--color-background-foreground", isLightTheme ? "#263143" : "#F8FAFC");
+
     const colors = {
-      expense: "#ff4d6d",
-      gain: "#2dd4bf",
-      budget: "#facc15",
-      balance: "#7c5cff"
+      expense: { stroke: isLightTheme ? "#b35f69" : "#ff4d6d", fill: isLightTheme ? "rgba(179,95,105,0.14)" : "rgba(255,77,109,0.2)" },
+      gain: { stroke: isLightTheme ? "#4b8f71" : "#2dd4bf", fill: isLightTheme ? "rgba(75,143,113,0.14)" : "rgba(45,212,191,0.2)" },
+      budget: { stroke: isLightTheme ? "#ab8742" : "#facc15", fill: isLightTheme ? "rgba(171,135,66,0.16)" : "rgba(250,204,21,0.2)" },
+      balance: { stroke: isLightTheme ? "#6a79a7" : "#7c5cff", fill: isLightTheme ? "rgba(106,121,167,0.15)" : "rgba(124,92,255,0.2)" }
     };
 
     if (metric === "expense" || metric === "all") {
       datasets.push({
         label: "Daily Expense",
         data: dailyExpenses,
-        borderColor: colors.expense,
-        backgroundColor: colors.expense + "33",
+        borderColor: colors.expense.stroke,
+        backgroundColor: colors.expense.fill,
         fill: true,
         tension: 0.1
       });
@@ -707,8 +812,8 @@ function main() {
       datasets.push({
         label: "Daily Gain",
         data: dailyGains,
-        borderColor: colors.gain,
-        backgroundColor: colors.gain + "33",
+        borderColor: colors.gain.stroke,
+        backgroundColor: colors.gain.fill,
         fill: true,
         tension: 0.1
       });
@@ -718,8 +823,8 @@ function main() {
       datasets.push({
         label: "Remaining Budget",
         data: cumBudgetRemaining,
-        borderColor: colors.budget,
-        backgroundColor: colors.budget + "33",
+        borderColor: colors.budget.stroke,
+        backgroundColor: colors.budget.fill,
         fill: true,
         tension: 0.3
       });
@@ -728,8 +833,8 @@ function main() {
       datasets.push({
         label: "Remaining Balance",
         data: cumBalance,
-        borderColor: colors.balance,
-        backgroundColor: colors.balance + "33",
+        borderColor: colors.balance.stroke,
+        backgroundColor: colors.balance.fill,
         fill: true,
         tension: 0.3
       });
@@ -745,11 +850,11 @@ function main() {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { grid: { color: "rgba(0,0,0,0.05)" }, ticks: { color: "#4B5563" } },
-          y: { grid: { color: "rgba(0,0,0,0.05)" }, ticks: { color: "#4B5563", callback: value => "₱" + value.toLocaleString() } }
+          x: { grid: { color: gridColor }, ticks: { color: axisColor } },
+          y: { grid: { color: gridColor }, ticks: { color: axisColor, callback: value => "PHP " + value.toLocaleString() } }
         },
         plugins: {
-          legend: { position: "top", labels: { color: "#111827" } },
+          legend: { position: "top", labels: { color: legendColor } },
           tooltip: {
             callbacks: {
               label: (context) => ` ${context.dataset.label}: ${fmtMoney(context.parsed.y)}`
@@ -1044,7 +1149,7 @@ function main() {
     if (!analyzeFinalBtn || !summaryDesc) return;
 
     analyzeFinalBtn.disabled = true;
-    analyzeFinalBtn.innerHTML = "⌛ Analyzing...";
+    analyzeFinalBtn.innerHTML = "Analyzing...";
     summaryDesc.classList.add("is-loading");
     summaryDesc.innerHTML = "";
 
@@ -1081,11 +1186,11 @@ function main() {
       
       const prompt = `
         Analyze my ${monthName} ${y} financials in detail:
-        - Total Spent: ₱${total}
-        - Top Category: ${topCategory[0]} (₱${topCategory[1]})
-        - Highest Spending Day: ${maxDayStr} (₱${maxDayVal})
-        - Monthly Budget: ₱${budget || "Not set"}
-        - Monthly Salary: ₱${salary || "Not set"}
+        - Total Spent: PHP {total}
+        - Top Category: ${topCategory[0]} (PHP {topCategory[1]})
+        - Highest Spending Day: ${maxDayStr} (PHP {maxDayVal})
+        - Monthly Budget: PHP {budget || "Not set"}
+        - Monthly Salary: PHP {salary || "Not set"}
 
         Provide a structured financial review:
         1. Performance Summary: Include specific percentages (e.g., "% of budget utilized", "% of salary spent", and "Top category share %").
@@ -1094,7 +1199,7 @@ function main() {
 
         CRITICAL FORMATTING: 
         1. Use NO markdown (no **). 
-        2. Wrap all amounts (₱), percentages (%), dates (YYYY-MM-DD), and the words "Smart Tip:" in <b> tags.
+        2. Wrap all amounts (PHP, percentages (%), dates (YYYY-MM-DD), and the words "Smart Tip:" in <b> tags.
         3. Use <br><br> to separate the summary section from the tips section.
         4. Keep the total response under 6 sentences plus the 3 tips.
       `;
@@ -1136,7 +1241,7 @@ function main() {
       summaryDesc.textContent = "Error connecting to AI assistant. Ensure server is online.";
     } finally {
       analyzeFinalBtn.disabled = false;
-      analyzeFinalBtn.innerHTML = "<span class='ai-spark'>✨</span> Analyze Financials";
+      analyzeFinalBtn.innerHTML = "<span class='ai-spark'>AI</span> Analyze Financials";
     }
   }
 
@@ -1415,78 +1520,118 @@ function main() {
     };
     reader.readAsText(file);
   });
+  if (exportJsonBtn) {
+    exportJsonBtn.addEventListener("click", async () => {
+      const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        data: {
+          salary,
+          budget,
+          weeklyBudget,
+          entriesByDay
+        }
+      };
 
-  salaryForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const s = parseMoney(salaryInput.value);
-    const b = parseMoney(budgetInput.value);
-    
-    if (!Number.isFinite(s)) return;
-    
-    if (Number.isFinite(b) && b > s) {
-      alert("Monthly budget cannot be greater than your monthly salary.");
-      budgetInput.focus();
-      return;
-    }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `xpense-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 
-    salary = s;
-    budget = Number.isFinite(b) ? b : null;
-    saveSalary(s);
-    saveBudget(budget);
-    ensureSetupState();
-  });
+  if (importJsonFile) {
+    importJsonFile.addEventListener("change", (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (readEvent) => {
+        try {
+          const parsed = JSON.parse(readEvent.target.result);
+          const data = parsed && parsed.data ? parsed.data : parsed;
+
+          if (!data || typeof data !== "object") {
+            throw new Error("Invalid backup file.");
+          }
+
+          salary = Number.isFinite(Number(data.salary)) ? Number(data.salary) : null;
+          budget = Number.isFinite(Number(data.budget)) ? Number(data.budget) : null;
+          weeklyBudget = Number.isFinite(Number(data.weeklyBudget)) ? Number(data.weeklyBudget) : null;
+          entriesByDay = data.entriesByDay && typeof data.entriesByDay === "object" ? data.entriesByDay : {};
+
+          saveSalary(salary);
+          saveBudget(budget);
+          saveWeeklyBudget(weeklyBudget);
+          saveEntries(entriesByDay);
+          ensureSetupState();
+          saveAndRefresh();
+        } catch (error) {
+          alert("Unable to import JSON backup.");
+          console.error(error);
+        } finally {
+          importJsonFile.value = "";
+        }
+      };
+
+      reader.readAsText(file);
+    });
+  }
 
   resetBtn.addEventListener("click", async () => {
-    if (!confirm("⚠️ Are you sure? This will PERMANENTLY delete all your local and cloud data.")) return;
-    
-    // 1. Wipe Internal state
+    if (!confirm("Are you sure? This will permanently delete your local tracker data on this device.")) return;
+
     entriesByDay = {};
     salary = null;
     budget = null;
+    weeklyBudget = null;
 
-    // 2. Wipe Local Storage
-    localStorage.removeItem(STORAGE_SALARY);
-    localStorage.removeItem(STORAGE_BUDGET);
-    localStorage.removeItem(STORAGE_ENTRIES);
-    localStorage.removeItem(STORAGE_WEEKLY_BUDGET);
-    localStorage.removeItem("tracker_sync_key");
-    
-    // Clear in-memory storage too if used
     saveSalary(null);
     saveBudget(null);
+    saveWeeklyBudget(null);
     saveEntries({});
 
-    // 3. Wipe Cloud Database
-    try {
-      const token = await fetchCsrfToken();
-      const authHeaders = getAuthHeaders();
-      
-      if (Object.keys(authHeaders).length > 0) {
-        await fetch("/api/api?action=sync", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": token,
-            ...authHeaders
-          },
-          body: JSON.stringify({ entriesByDay: {}, salary: null, budget: null })
-        });
-      }
-    } catch(e) {
-      console.error("Cloud reset failed:", e);
+    if (window.localDataStore) {
+      await Promise.all([
+        window.localDataStore.deleteData(STORAGE_SALARY),
+        window.localDataStore.deleteData(STORAGE_BUDGET),
+        window.localDataStore.deleteData(STORAGE_WEEKLY_BUDGET),
+        window.localDataStore.deleteData(STORAGE_ENTRIES)
+      ]).catch(() => {});
     }
 
-    // 4. Force Redirect/Reload
-    alert("Project reset successful.");
+    alert("Local data reset successful.");
     window.location.reload();
   });
 
-  syncBtn.addEventListener("click", triggerSync);
+  if (syncBtn) syncBtn.addEventListener("click", triggerSync);
+  if (logoutBtn) {
+    logoutBtn.onclick = async () => {
+      if (!isPwaMode) {
+        try {
+          const token = await fetchCsrfToken();
+          await fetch("/api/api?action=logout", {
+            method: "POST",
+            headers: {
+              "X-CSRF-Token": token || "",
+              ...getAuthHeaders(),
+            },
+          });
+        } catch {}
+      }
 
-  logoutBtn.onclick = async () => {
-    clearAuthToken();
-    window.location.reload();
-  };
+      clearAuthToken();
+      if (isPwaMode) {
+        setLocalModeUI();
+        window.location.reload();
+      } else {
+        redirectToLogin();
+      }
+    };
+  }
 
   entryForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -1775,38 +1920,25 @@ function main() {
   function initMobileNav() {
     const toggle = document.querySelector(".nav-toggle");
     const nav = document.querySelector(".site-nav");
+    if (!toggle || !nav) return;
     const navItems = nav.querySelectorAll("button, a, input");
 
-    if (!toggle || !nav) return;
-
-    toggle.addEventListener("click", () => {
-      const isOpen = nav.classList.toggle("is-open");
+    const setOpenState = (isOpen) => {
+      nav.classList.toggle("is-open", isOpen);
+      toggle.classList.toggle("is-active", isOpen);
       toggle.setAttribute("aria-expanded", String(isOpen));
       document.body.style.overflow = isOpen ? "hidden" : "";
+    };
 
-      const spans = toggle.querySelectorAll("span");
-      if (isOpen) {
-        if (spans[0]) spans[0].style.transform = "translateY(6px) rotate(45deg)";
-        if (spans[1]) spans[1].style.opacity = "0";
-        if (spans[2]) spans[2].style.transform = "translateY(-6px) rotate(-45deg)";
-      } else {
-        if (spans[0]) spans[0].style.transform = "";
-        if (spans[1]) spans[1].style.opacity = "1";
-        if (spans[2]) spans[2].style.transform = "";
-      }
+    toggle.addEventListener("click", () => {
+      const isOpen = !nav.classList.contains("is-open");
+      setOpenState(isOpen);
     });
 
     navItems.forEach(item => {
       item.addEventListener("click", () => {
         if (item.id === "syncKeyInput") return;
-        nav.classList.remove("is-open");
-        toggle.setAttribute("aria-expanded", "false");
-        document.body.style.overflow = "";
-
-        const spans = toggle.querySelectorAll("span");
-        if (spans[0]) spans[0].style.transform = "";
-        if (spans[1]) spans[1].style.opacity = "1";
-        if (spans[2]) spans[2].style.transform = "";
+        setOpenState(false);
       });
     });
   }
@@ -1834,9 +1966,9 @@ function main() {
     function buildFinancialContext() {
       const parts = [
         `Today's Date: ${new Date().toISOString().split('T')[0]}`,
-        `Currency: Philippine Peso (₱)`,
-        `Monthly Salary: ₱${salary || "Not set"}`,
-        `Monthly Budget: ₱${budget || "Not set"}`,
+        `Currency: Philippine Peso (PHP)`,
+        `Monthly Salary: PHP ${salary || "Not set"}`,
+        `Monthly Budget: PHP ${budget || "Not set"}`,
         "RECENT TRANSACTIONS (Last 60 days):"
       ];
       
@@ -1924,8 +2056,8 @@ function main() {
                "Your ONLY purpose is to discuss the Xpense website features and provide financial advice/analysis based on the user's data. " +
                "STRICT RULE: Do NOT answer questions about unrelated topics (e.g., general knowledge, jokes, other websites, or unrelated programming). " +
                "If a user asks something non-financial or unrelated to Xpense, politely decline and offer to help with their expenses or budget instead. " +
-               "The currency is Philippine Peso (₱). Use the provided spending data to answer user questions. Be precise with calculations. " +
-               "ALWAYS use the ₱ symbol when mentioning money. If they ask about spending, sum up the relevant categories/dates from the log. " +
+               "The currency is Philippine Peso (PHP). Use the provided spending data to answer user questions. Be precise with calculations. " +
+               "ALWAYS use the PHP symbol when mentioning money. If they ask about spending, sum up the relevant categories/dates from the log. " +
                "If they are over budget, give friendly advice. Keep responses concise and use bold for numbers.\n\n" +
                "NEW CAPABILITY: You can now modify the user's data! " +
                "To take an action, append ONE of these commands at the VERY END of your response (it will be parsed internally):\n" +
@@ -1966,7 +2098,7 @@ function main() {
       setOpen(false);
     });
 
-    addMessage("assistant", "Hi! I'm your Financial Assistant. I've analyzed your spending logs in ₱. How can I help you today?");
+    addMessage("assistant", "Hi! I'm your Financial Assistant. I've analyzed your spending logs in PHP. How can I help you today?");
 
     form.onsubmit = async (e) => {
       e.preventDefault();
@@ -2019,4 +2151,8 @@ function main() {
   ensureSetupState();
 }
 
-main();
+main().catch((error) => {
+  console.error("Failed to initialize tracker.", error);
+});
+
+

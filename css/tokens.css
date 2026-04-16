@@ -103,32 +103,32 @@
 
 /* ── Light Mode (toggle override) ── */
 [data-theme="light"] {
-  --color-primary: #5C6784; /* Deep Muted Blue/Gray */
+  --color-primary: #4f5f78; /* Muted steel blue for calmer UI anchors */
   --color-primary-foreground: #ffffff;
-  --color-secondary: #E0E7FF;
-  --color-secondary-foreground: #4338CA;
-  --color-accent: #8E94F2; /* Pastel Indigo */
+  --color-secondary: #dde4ef;
+  --color-secondary-foreground: #33445d;
+  --color-accent: #5f7fa8; /* Desaturated blue accent, less visual fatigue */
   --color-accent-foreground: #ffffff;
-  --color-background: #F7F8FC; /* Soft Lavender Cream */
-  --color-background-foreground: #2D3748;
-  --color-surface: #FFFFFF;
-  --color-surface-foreground: #2D3748;
-  --color-surface-strong: #FFFFFF;
-  --color-muted: #F0F2F9;
-  --color-muted-foreground: #718096;
-  --color-border: #E2E8F0;
-  --color-border-strong: #CBD5E0;
-  --color-destructive: #FF8A8A; /* Pastel Red */
+  --color-background: #eef2f7; /* Soft cool gray (not pure white) */
+  --color-background-foreground: #263143;
+  --color-surface: #f6f8fb;
+  --color-surface-foreground: #2b3648;
+  --color-surface-strong: #edf1f6;
+  --color-muted: #e6ebf2;
+  --color-muted-foreground: #5f6d80;
+  --color-border: #d3dbe7;
+  --color-border-strong: #bec9d9;
+  --color-destructive: #c85b6b;
   --color-destructive-foreground: #ffffff;
-  --color-success: #9AE6B4; /* Pastel Green */
-  --color-success-foreground: #22543D;
-  --color-warning: #FBD38D; /* Pastel Orange */
-  --color-warning-foreground: #744210;
-  --color-grid: rgba(142, 148, 242, 0.1);
-  --color-glow: rgba(142, 148, 242, 0.05);
-  --color-glow-secondary: rgba(224, 231, 255, 0.5);
-  --shadow-sm: 0 2px 4px rgba(160, 174, 192, 0.1);
-  --shadow-md: 0 4px 12px rgba(160, 174, 192, 0.15);
-  --shadow-lg: 0 10px 25px rgba(160, 174, 192, 0.2);
-  --shadow-xl: 0 20px 48px rgba(160, 174, 192, 0.25);
+  --color-success: #3f7f62;
+  --color-success-foreground: #f3fbf7;
+  --color-warning: #b47f2c;
+  --color-warning-foreground: #fff8ea;
+  --color-grid: rgba(95, 127, 168, 0.08);
+  --color-glow: rgba(95, 127, 168, 0.04);
+  --color-glow-secondary: rgba(221, 228, 239, 0.45);
+  --shadow-sm: 0 1px 3px rgba(38, 49, 67, 0.06), 0 3px 10px rgba(38, 49, 67, 0.05);
+  --shadow-md: 0 4px 14px rgba(38, 49, 67, 0.08), 0 10px 24px rgba(38, 49, 67, 0.06);
+  --shadow-lg: 0 8px 22px rgba(38, 49, 67, 0.10), 0 18px 38px rgba(38, 49, 67, 0.08);
+  --shadow-xl: 0 14px 36px rgba(38, 49, 67, 0.12), 0 26px 56px rgba(38, 49, 67, 0.10);
 }

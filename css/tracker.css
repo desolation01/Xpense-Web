@@ -44,14 +44,14 @@
     width: 100% !important;
     height: 100vh !important;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: calc(1rem + var(--safe-top, 0px)) calc(1rem + var(--safe-right, 0px)) calc(1rem + var(--safe-bottom, 0px)) calc(1rem + var(--safe-left, 0px));
     background: var(--color-background) !important; /* theme-aware background to match landing */
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     z-index: var(--z-overlay);
-    gap: 3.5rem !important; /* Large, clean gaps */
+    gap: 1rem !important;
     overflow-y: auto;
     border: none !important;
     border-radius: 0 !important;
@@ -62,12 +62,29 @@
   }
 
   .site-nav[aria-label="Secondary"] .btn {
-    font-size: 1.35rem !important;
-    padding: 1rem 3rem !important;
+    font-size: 1rem !important;
+    padding: 0.9rem 1rem !important;
     width: auto !important;
-    min-width: 280px;
+    min-width: 0;
+    max-width: 100%;
     border-radius: 12px !important;
     justify-content: center;
+  }
+
+  /* Keep action buttons readable on mobile without spanning the full panel */
+  .site-nav[aria-label="Secondary"] .btn:not(.theme-toggle-btn):not(.tracker-sync-btn) {
+    width: min(14rem, 100%) !important;
+    max-width: 14rem;
+    align-self: center;
+  }
+
+  .site-nav[aria-label="Secondary"] .theme-toggle-btn {
+    width: 56px !important;
+    height: 56px !important;
+    min-width: 56px !important;
+    min-height: 56px !important;
+    padding: 0 !important;
+    align-self: center;
   }
 
   /* Sync Controls Stacking */
@@ -99,6 +116,36 @@
   border: 1px solid var(--color-border);
   width: 44px;
   height: 44px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0 !important;
+  color: var(--color-background-foreground);
+}
+
+.nav-toggle .nav-icon {
+  width: 22px;
+  height: 22px;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.nav-toggle .nav-icon-close {
+  position: absolute;
+  display: none;
+  opacity: 0;
+  transform: scale(0.85);
+}
+
+.nav-toggle.is-active .nav-icon-menu {
+  display: none;
+  opacity: 0;
+  transform: scale(0.85);
+}
+
+.nav-toggle.is-active .nav-icon-close {
+  display: block;
+  opacity: 1;
+  transform: scale(1);
 }
 
 /* ── Main Layout ── */
@@ -109,8 +156,22 @@
   font-family: var(--lp-font), sans-serif;
 }
 
+.tracker-main-layout > *,
+.tracker-body > *,
+.tracker-left-col > *,
+.tracker-right-panel > *,
+.tracker-hero,
+.tracker-side-cards,
+.tracker-mini-stat {
+  min-width: 0;
+}
+
 /* ── Dashboard Navbar Refinement (Desktop) ── */
 @media (min-width: 860px) {
+  .nav-toggle {
+    display: none !important;
+  }
+
   .site-nav[aria-label="Secondary"] {
     background: rgba(12, 15, 26, 0.4) !important;
     backdrop-filter: blur(20px);
@@ -965,17 +1026,20 @@
 
   .site-nav[aria-label="Secondary"].is-open .sync-wrapper {
     flex-direction: column;
-    background: var(--color-muted);
-    padding: var(--sp-3);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    border: 0;
+    box-shadow: none;
     width: 100%;
     align-items: center;
   }
 
-  .site-nav[aria-label="Secondary"].is-open .btn {
-    width: 100%;
-    max-width: 200px;
+  .site-nav[aria-label="Secondary"].is-open .btn:not(.theme-toggle-btn):not(.tracker-sync-btn) {
+    width: min(14rem, 100%) !important;
+    max-width: 14rem;
+    min-width: 0;
+    align-self: center;
   }
 }
 
@@ -1941,8 +2005,7 @@
   }
 
   .tracker-hero-row {
-    flex-direction: row; /* Keep side-by-side as requested */
-    flex-wrap: wrap; /* Allow wrapping if too narrow */
+    flex-direction: column;
   }
 
   /* Reorder Summary to bottom on mobile */
@@ -2074,7 +2137,7 @@
 
   /* Mini stats -> horizontal layout (3 columns) */
   .tracker-mini-stats {
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: 1fr !important;
     gap: var(--sp-2) !important;
   }
 
@@ -2131,6 +2194,14 @@
     height: 220px;
   }
 
+  .chart-header {
+    flex-wrap: wrap;
+  }
+
+  .site-header .container {
+    width: min(var(--container-max), calc(100% - 1rem));
+  }
+
   /* Final summary */
   .final-summary-card {
     padding: var(--sp-5);
@@ -2185,21 +2256,34 @@
   }
   
   .chatbot-fab {
-    width: auto !important;
-    min-width: 140px !important;
-    height: 48px !important;
-    padding: 0 1.25rem !important;
-    border-radius: var(--radius-full) !important;
-    font-size: 0.9rem !important;
+    width: 52px !important;
+    min-width: 0 !important;
+    height: 52px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    font-size: 1.2rem !important;
     display: flex !important;
-    gap: 0.5rem !important;
+    gap: 0 !important;
     align-items: center !important;
     justify-content: center !important;
     box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
   }
 
-  .chatbot-fab .fab-text {
-    display: inline !important; /* Show text again */
+  .chatbot-fab .fab-text,
+  .chatbot-fab .fab-icon {
+    display: none !important;
+  }
+
+  .chatbot-fab::before {
+    content: "";
+    width: 22px;
+    height: 22px;
+    display: block;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    /* Simple dialogue icon */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z'/%3E%3C/svg%3E");
   }
 
   /* Chatbot panel full-width on mobile */
@@ -2259,14 +2343,13 @@
     height: 52px !important;
     padding: 0 !important;
     border-radius: 50% !important;
-    font-size: 1.5rem !important;
+    font-size: 1.2rem !important;
     min-width: 0 !important;
   }
 
-  /* Replace text with icon via CSS if possible, but easier to just hide text in HTML */
-  /* Or we can use a ::before pseudo element if we can't edit HTML safely */
-  
-  .chatbot-fab span {
+  .chatbot-fab span,
+  .chatbot-fab .fab-text,
+  .chatbot-fab .fab-icon {
     display: none;
   }
 }
@@ -2337,10 +2420,12 @@
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+  min-height: 56px !important;
   padding: 0 !important;
-  border-radius: 12px !important;
+  border-radius: 14px !important;
   background: rgba(255, 255, 255, 0.05) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   cursor: pointer;
@@ -2354,8 +2439,8 @@
 }
 
 .theme-icon {
-  width: 32px !important;
-  height: 32px !important;
+  width: 34px !important;
+  height: 34px !important;
   stroke-width: 2.5px !important;
   fill: none !important;
 }
@@ -2378,5 +2463,162 @@
 
 [data-theme="light"] .theme-icon-moon {
   stroke: #5C6784 !important; /* Deep Blue in Light Mode */
+}
+
+/* Light Mode UX polish: softer badges and chart chrome */
+[data-theme="light"] .stats-badge {
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
+}
+
+[data-theme="light"] .weekly-badge {
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-muted));
+  color: #f7f9fc;
+}
+
+[data-theme="light"] .savings-rate-box,
+[data-theme="light"] .daily-avg-container {
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+}
+
+[data-theme="light"] .savings-label,
+[data-theme="light"] .savings-val,
+[data-theme="light"] .daily-avg-label {
+  color: var(--color-primary);
+}
+
+[data-theme="light"] .trend-badge {
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  color: var(--color-muted-foreground);
+  border-color: color-mix(in srgb, var(--color-primary) 20%, var(--color-border));
+}
+
+[data-theme="light"] .trend-badge.up {
+  background: color-mix(in srgb, var(--color-destructive) 12%, var(--color-surface));
+  color: #9d4b58;
+}
+
+[data-theme="light"] .trend-badge.down {
+  background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface));
+  color: #3e725a;
+}
+
+[data-theme="light"] .chart-card {
+  background: linear-gradient(180deg, var(--color-surface), color-mix(in srgb, var(--color-surface) 85%, var(--color-muted)));
+  border-color: color-mix(in srgb, var(--color-border) 90%, var(--color-primary) 10%);
+}
+
+[data-theme="light"] .field-input-mini {
+  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-muted));
+  border-color: color-mix(in srgb, var(--color-border) 92%, var(--color-primary) 8%);
+}
+
+[data-theme="light"] .field-input-mini:hover {
+  background: color-mix(in srgb, var(--color-surface) 72%, var(--color-muted));
+}
+
+/* Dashboard mobile nav: match landing menu visual language */
+@media (max-width: 859px) {
+  .site-nav[aria-label="Secondary"] {
+    justify-content: flex-start;
+    align-items: center;
+    gap: 1.1rem !important;
+    padding: calc(5.25rem + var(--safe-top, 0px)) 1rem calc(2rem + var(--safe-bottom, 0px)) 1rem;
+    background: rgba(5, 5, 5, 0.95) !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .site-nav[aria-label="Secondary"] .sync-wrapper,
+  .site-nav[aria-label="Secondary"] #authControls {
+    width: 100%;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0.9rem !important;
+    background: transparent !important;
+    border: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .site-nav[aria-label="Secondary"] #usernameDisplay {
+    color: rgba(248, 250, 252, 0.94) !important;
+    font-size: 1.3rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.35rem 0 !important;
+  }
+
+  .site-nav[aria-label="Secondary"] .btn {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 3rem !important;
+    padding: 0 1.35rem !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: rgba(226, 232, 240, 0.9) !important;
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+  }
+
+  .site-nav[aria-label="Secondary"] .btn:hover,
+  .site-nav[aria-label="Secondary"] .btn:focus-visible {
+    color: rgba(248, 250, 252, 0.98) !important;
+    background: transparent !important;
+  }
+
+  .site-nav[aria-label="Secondary"] #logoutBtn,
+  .site-nav[aria-label="Secondary"] #resetTrackerBtn,
+  .site-nav[aria-label="Secondary"] #themeToggleBtn {
+    width: min(15rem, 100%) !important;
+    min-width: min(15rem, 100%) !important;
+    min-height: 3rem !important;
+    height: 3rem !important;
+    padding: 0 1.35rem !important;
+    border-radius: 999px !important;
+    border: 1px solid transparent !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28) !important;
+    justify-content: center !important;
+    align-self: center;
+    display: inline-flex !important;
+    gap: 0.5rem !important;
+  }
+
+  .site-nav[aria-label="Secondary"] #logoutBtn {
+    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  }
+
+  .site-nav[aria-label="Secondary"] #resetTrackerBtn {
+    background: linear-gradient(135deg, #1f2937, #334155) !important;
+  }
+
+  .site-nav[aria-label="Secondary"] .theme-toggle-btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  }
+
+  .site-nav[aria-label="Secondary"] #themeToggleBtn .theme-icon {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .site-nav[aria-label="Secondary"] .tracker-sync-btn {
+    display: none !important;
+  }
+
+  .site-nav[aria-label="Secondary"] .header-back-btn {
+    width: min(15rem, 100%) !important;
+    min-height: 3rem !important;
+    padding: 0 1.35rem !important;
+    border-radius: 999px !important;
+    background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+    color: #fff !important;
+    box-shadow: 0 12px 32px rgba(79, 70, 229, 0.35) !important;
+    font-size: 1.1rem !important;
+  }
 }
 
