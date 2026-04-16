@@ -1,4 +1,4 @@
-const SW_VERSION = "xpense-pwa-v1.3.0";
+const SW_VERSION = "xpense-pwa-v1.4.2";
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const DYNAMIC_CACHE = `${SW_VERSION}-dynamic`;
 const API_CACHE = `${SW_VERSION}-api`;
@@ -13,7 +13,7 @@ const APP_SHELL = [
   "/css/styles.css",
   "/css/styles.css?v=2.0.0",
   "/css/tracker.css",
-  "/css/tracker.css?v=2.2.0",
+  "/css/tracker.css?v=2.2.3",
   "/css/landing.css",
   "/css/pwa.css",
   "/js/localDataStore.js",
@@ -23,7 +23,7 @@ const APP_SHELL = [
   "/js/chat.js",
   "/js/chat.js?v=1.3.0",
   "/js/pwa.js",
-  "/js/pwa.js?v=1.0.0",
+  "/js/pwa.js?v=1.1.0",
   "/assets/hehehe.png",
   "/assets/hero-mockup.png",
   "/assets/icons/icon-192.png",
@@ -83,14 +83,22 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  const isStaticAsset =
+  const isStyleOrScript =
     request.destination === "style" ||
     request.destination === "script" ||
-    request.destination === "image" ||
     request.destination === "font" ||
-    /\.(?:css|js|png|jpg|jpeg|svg|webp|gif|ico|woff2?|ttf)$/.test(url.pathname);
+    /\.(?:css|js|woff2?|ttf)$/.test(url.pathname);
 
-  if (isStaticAsset) {
+  const isImageAsset =
+    request.destination === "image" ||
+    /\.(?:png|jpg|jpeg|svg|webp|gif|ico)$/.test(url.pathname);
+
+  if (isStyleOrScript) {
+    event.respondWith(staleWhileRevalidate(request, DYNAMIC_CACHE));
+    return;
+  }
+
+  if (isImageAsset) {
     event.respondWith(cacheFirst(request, DYNAMIC_CACHE));
     return;
   }
@@ -161,6 +169,27 @@ async function cacheFirst(request, cacheName) {
   }
 }
 
+async function staleWhileRevalidate(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  const cachedResponse = await cache.match(request);
+
+  const networkFetch = fetch(request)
+    .then(async (networkResponse) => {
+      await safeCachePut(cache, request, networkResponse.clone());
+      return networkResponse;
+    })
+    .catch(() => null);
+
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  const networkResponse = await networkFetch;
+  if (networkResponse) return networkResponse;
+
+  return new Response("Offline", { status: 503 });
+}
+
 async function safeCachePut(cache, request, response) {
   if (!response || response.status >= 400) return;
 
@@ -195,5 +224,3 @@ async function pruneCache(cache) {
     await cache.delete(keys[i]);
   }
 }
-
-

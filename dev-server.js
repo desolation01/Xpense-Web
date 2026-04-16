@@ -28,6 +28,35 @@ const MIME = {
   '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
 };
 
+function buildCacheControl(filePath, reqUrl) {
+  const ext = path.extname(filePath).toLowerCase();
+  const parsed = url.parse(reqUrl, true);
+  const hasVersionQuery = Object.prototype.hasOwnProperty.call(parsed.query || {}, 'v');
+  const baseName = path.basename(filePath).toLowerCase();
+
+  if (ext === '.html') {
+    return 'no-store, must-revalidate';
+  }
+
+  if (baseName === 'sw.js') {
+    return 'no-store, must-revalidate';
+  }
+
+  if (baseName === 'manifest.json') {
+    return 'no-cache, must-revalidate';
+  }
+
+  if (hasVersionQuery) {
+    return 'public, max-age=31536000, immutable';
+  }
+
+  if (ext === '.css' || ext === '.js') {
+    return 'no-cache, must-revalidate';
+  }
+
+  return 'public, max-age=3600';
+}
+
 // Load API handler once
 let apiHandler = null;
 try {
@@ -100,9 +129,10 @@ const server = http.createServer((req, res) => {
   }
 
   const ext = path.extname(filePath).toLowerCase();
+  const cacheControl = buildCacheControl(filePath, req.url);
   res.writeHead(200, {
     'Content-Type': MIME[ext] || 'application/octet-stream',
-    'Cache-Control': 'no-cache',
+    'Cache-Control': cacheControl,
   });
   res.end(fs.readFileSync(filePath));
 });

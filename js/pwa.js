@@ -1,10 +1,13 @@
 (function () {
   const OFFLINE_CLASS = "is-offline";
+  const AUTO_APPLY_UPDATE_DELAY_MS = 4000;
+  const UPDATE_CHECK_INTERVAL_MS = 60 * 1000;
   const debugMode = new URLSearchParams(window.location.search).has("pwa-debug");
   let deferredPrompt = null;
   let installButton = null;
   let installUi = null;
   let pwaDebug = null;
+  let updateTimer = null;
 
   const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
   const isSafari = /safari/i.test(window.navigator.userAgent) && !/crios|fxios|edgios|chrome/i.test(window.navigator.userAgent);
@@ -197,6 +200,11 @@
     updateInstallButtonVisibility();
   }
 
+  function applyUpdate(worker) {
+    if (!worker) return;
+    worker.postMessage({ type: "SKIP_WAITING" });
+  }
+
   function showUpdateToast(worker) {
     const existing = document.getElementById("pwa-update-toast");
     if (existing) existing.remove();
@@ -204,22 +212,28 @@
     const toast = document.createElement("div");
     toast.id = "pwa-update-toast";
     toast.innerHTML = `
-      <span>New version available.</span>
+      <span>New version available. Updating...</span>
       <button id="pwa-update-refresh" class="btn btn-small btn-primary" type="button">Refresh</button>
     `;
     document.body.appendChild(toast);
 
     const refreshBtn = toast.querySelector("#pwa-update-refresh");
     refreshBtn.addEventListener("click", () => {
-      worker.postMessage({ type: "SKIP_WAITING" });
+      applyUpdate(worker);
     });
+
+    if (updateTimer) window.clearTimeout(updateTimer);
+    updateTimer = window.setTimeout(() => applyUpdate(worker), AUTO_APPLY_UPDATE_DELAY_MS);
   }
 
   async function registerServiceWorker() {
     if (!("serviceWorker" in navigator)) return;
 
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      const registration = await navigator.serviceWorker.register("/sw.js", {
+        scope: "/",
+        updateViaCache: "none",
+      });
 
       // If no controller yet (first visit or after clear), wait for the SW
       // to activate and then reload once so clients.claim() takes effect.
@@ -269,6 +283,16 @@
       window.addEventListener("online", () => {
         registration.update().catch(() => {});
       });
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          registration.update().catch(() => {});
+        }
+      });
+
+      window.setInterval(() => {
+        registration.update().catch(() => {});
+      }, UPDATE_CHECK_INTERVAL_MS);
 
       let hasRefreshed = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {

@@ -10,6 +10,9 @@ const TRACKER_STORAGE_DEFAULTS = {
   [STORAGE_ENTRIES]: {},
 };
 
+const AUTH_TOKEN_KEY = "auth_token";
+const AUTH_USER_KEY = "auth_username";
+
 // --- SECURITY & CSRF ---
 let csrfToken = null;
 async function fetchCsrfToken() {
@@ -24,10 +27,25 @@ async function fetchCsrfToken() {
   }
 }
 
-// Local mode: auth is disabled for the PWA experience.
-function clearAuthToken() {}
+function clearAuthToken() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+}
 function getAuthHeaders() {
-  return {};
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function isPwaStandaloneMode() {
+  return Boolean(
+    (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+    window.navigator.standalone
+  );
+}
+
+function redirectToLogin() {
+  const next = encodeURIComponent("/expense-tracker");
+  window.location.replace(`./tracker-login?next=${next}`);
 }
 
 async function hydrateFromLocalStore() {
@@ -196,6 +214,7 @@ async function main() {
   const logoutBtn = document.getElementById("logoutBtn");
   const userStatus = document.getElementById("userStatus");
   const usernameDisplay = document.getElementById("usernameDisplay");
+  const localModeBadge = document.getElementById("localModeBadge");
   
   const trackerHeader = document.getElementById("trackerHeader");
 
@@ -254,6 +273,7 @@ async function main() {
   let chart = null;
   let currentChartType = "pie";
   let currentChartMetric = "all";
+  const isPwaMode = isPwaStandaloneMode();
 
   const chartTypeSelect = document.getElementById("chartTypeSelect");
   const chartMetricSelect = document.getElementById("chartMetricSelect");
@@ -297,29 +317,168 @@ async function main() {
       updateChart();
     });
   }
-  function setLocalModeUI() {
-    if (loginOpenBtn) loginOpenBtn.style.display = "none";
-    if (userStatus) userStatus.style.display = "none";
-    if (logoutBtn) logoutBtn.style.display = "none";
-    if (syncBtn) syncBtn.style.display = "none";
 
+  const setAppVisible = () => {
     trackerHeader.style.display = "block";
     trackerMain.style.display = "block";
     setTimeout(() => {
       trackerHeader.classList.add("is-visible");
       trackerMain.classList.add("is-visible");
     }, 50);
+  };
+
+  function setLocalModeUI() {
+    if (localModeBadge) localModeBadge.style.display = "";
+    if (loginOpenBtn) loginOpenBtn.style.display = "none";
+    if (userStatus) userStatus.style.display = "none";
+    if (logoutBtn) logoutBtn.style.display = "none";
+    if (syncBtn) syncBtn.style.display = "none";
+    setAppVisible();
+  }
+
+  function setLoggedOutUI() {
+    if (localModeBadge) localModeBadge.style.display = "none";
+    if (loginOpenBtn) loginOpenBtn.style.display = "inline-flex";
+    if (userStatus) userStatus.style.display = "none";
+    if (logoutBtn) logoutBtn.style.display = "none";
+    if (syncBtn) syncBtn.style.display = "none";
+    setAppVisible();
+  }
+
+  function setLoggedInUI(username) {
+    if (localModeBadge) localModeBadge.style.display = "none";
+    if (loginOpenBtn) loginOpenBtn.style.display = "none";
+    if (userStatus) userStatus.style.display = "flex";
+    if (logoutBtn) logoutBtn.style.display = "inline-flex";
+    if (syncBtn) syncBtn.style.display = "inline-flex";
+    if (usernameDisplay) usernameDisplay.textContent = username || localStorage.getItem(AUTH_USER_KEY) || "User";
+    if (username) localStorage.setItem(AUTH_USER_KEY, username);
+    setAppVisible();
+  }
+
+  function countEntries(entries) {
+    return Object.values(entries || {}).reduce((sum, dayItems) => sum + (Array.isArray(dayItems) ? dayItems.length : 0), 0);
   }
 
   async function initialSync() {
-    return;
+    if (isPwaMode) return;
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders.Authorization) return;
+
+    try {
+      const response = await fetch("/api/api?action=sync", {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          ...authHeaders,
+        },
+      });
+
+      if (response.status === 401) {
+        clearAuthToken();
+        setLoggedOutUI();
+        return;
+      }
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      salary = Number.isFinite(Number(data.salary)) ? Number(data.salary) : null;
+      budget = Number.isFinite(Number(data.budget)) ? Number(data.budget) : null;
+      weeklyBudget = Number.isFinite(Number(data.weeklyBudget)) ? Number(data.weeklyBudget) : null;
+      entriesByDay = data.entriesByDay && typeof data.entriesByDay === "object" ? data.entriesByDay : {};
+
+      saveSalary(salary);
+      saveBudget(budget);
+      saveWeeklyBudget(weeklyBudget);
+      saveEntries(entriesByDay);
+    } catch (error) {
+      console.warn("Initial sync skipped due to connection issue.", error);
+    }
   }
 
   const triggerSync = async () => {
-    return;
+    if (isPwaMode) return;
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders.Authorization) return;
+
+    try {
+      const token = await fetchCsrfToken();
+      if (!token) return;
+
+      const response = await fetch("/api/api?action=sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": token,
+          ...authHeaders,
+        },
+        body: JSON.stringify({
+          salary,
+          budget,
+          weeklyBudget,
+          entriesByDay,
+          entriesCount: countEntries(entriesByDay),
+        }),
+      });
+
+      if (response.status === 401) {
+        clearAuthToken();
+        setLoggedOutUI();
+      }
+    } catch (error) {
+      console.warn("Background sync failed.", error);
+    }
   };
 
-  setLocalModeUI();
+  async function initializeAuthMode() {
+    if (isPwaMode) {
+      setLocalModeUI();
+      return;
+    }
+
+    if (loginOpenBtn) {
+      loginOpenBtn.addEventListener("click", () => {
+        window.location.href = "./tracker-login";
+      });
+    }
+
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders.Authorization) {
+      redirectToLogin();
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/api?action=status", {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          ...authHeaders,
+        },
+      });
+
+      if (!response.ok) {
+        clearAuthToken();
+        redirectToLogin();
+        return;
+      }
+
+      const data = await response.json();
+      if (data.logged_in) {
+        setLoggedInUI(data.username || localStorage.getItem(AUTH_USER_KEY) || "User");
+        await initialSync();
+      } else {
+        clearAuthToken();
+        redirectToLogin();
+      }
+    } catch (error) {
+      console.warn("Auth status check failed.", error);
+      redirectToLogin();
+    }
+  }
+
+  await initializeAuthMode();
 
   salaryForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -515,6 +674,15 @@ async function main() {
     renderWeeklyBreakdown();
   }
 
+  function getThemeColor(tokenName, fallback) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(tokenName).trim();
+    return value || fallback;
+  }
+
+  function isLightThemeActive() {
+    return document.documentElement.getAttribute("data-theme") === "light";
+  }
+
   function renderPieChart(ctx) {
     const y = viewDate.getFullYear();
     const m = viewDate.getMonth();
@@ -536,6 +704,12 @@ async function main() {
 
     if (labels.length === 0) return;
 
+    const isLightTheme = isLightThemeActive();
+    const legendColor = getThemeColor("--color-background-foreground", isLightTheme ? "#263143" : "#F8FAFC");
+    const piePalette = isLightTheme
+      ? ["#6f8199", "#7ca18f", "#bd7d86", "#8a97bb", "#9d8cb5", "#8fa0ac", "#b59e7f", "#829ec4"]
+      : ["#7c5cff", "#5ae4ff", "#ff4d6d", "#2dd4bf", "#facc15", "#8b5cf6", "#ec4899", "#3b82f6"];
+
     chart = new Chart(ctx, {
       type: "pie",
       plugins: [ChartDataLabels],
@@ -543,14 +717,14 @@ async function main() {
         labels: labels,
         datasets: [{
           data: data,
-          backgroundColor: ["#7c5cff", "#5ae4ff", "#ff4d6d", "#2dd4bf", "#facc15", "#8b5cf6", "#ec4899", "#3b82f6"]
+          backgroundColor: piePalette
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: "bottom", labels: { color: "#fff" } },
+          legend: { position: "bottom", labels: { color: legendColor } },
           tooltip: {
             callbacks: {
               label: (context) => {
@@ -562,7 +736,8 @@ async function main() {
             }
           },
           datalabels: {
-            color: '#fff',
+            display: !isLightTheme,
+            color: isLightTheme ? "#2b3648" : "#fff",
             formatter: (value, ctx) => {
               const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
               const pct = ((value / total) * 100).toFixed(1) + "%";
@@ -611,19 +786,24 @@ async function main() {
       cumBalance.push((salary || 0) + curGain - curExp);
     }
 
+    const isLightTheme = isLightThemeActive();
+    const axisColor = getThemeColor("--color-muted-foreground", "#5f6d80");
+    const gridColor = isLightTheme ? "rgba(95, 109, 128, 0.14)" : "rgba(0,0,0,0.05)";
+    const legendColor = getThemeColor("--color-background-foreground", isLightTheme ? "#263143" : "#F8FAFC");
+
     const colors = {
-      expense: "#ff4d6d",
-      gain: "#2dd4bf",
-      budget: "#facc15",
-      balance: "#7c5cff"
+      expense: { stroke: isLightTheme ? "#b35f69" : "#ff4d6d", fill: isLightTheme ? "rgba(179,95,105,0.14)" : "rgba(255,77,109,0.2)" },
+      gain: { stroke: isLightTheme ? "#4b8f71" : "#2dd4bf", fill: isLightTheme ? "rgba(75,143,113,0.14)" : "rgba(45,212,191,0.2)" },
+      budget: { stroke: isLightTheme ? "#ab8742" : "#facc15", fill: isLightTheme ? "rgba(171,135,66,0.16)" : "rgba(250,204,21,0.2)" },
+      balance: { stroke: isLightTheme ? "#6a79a7" : "#7c5cff", fill: isLightTheme ? "rgba(106,121,167,0.15)" : "rgba(124,92,255,0.2)" }
     };
 
     if (metric === "expense" || metric === "all") {
       datasets.push({
         label: "Daily Expense",
         data: dailyExpenses,
-        borderColor: colors.expense,
-        backgroundColor: colors.expense + "33",
+        borderColor: colors.expense.stroke,
+        backgroundColor: colors.expense.fill,
         fill: true,
         tension: 0.1
       });
@@ -632,8 +812,8 @@ async function main() {
       datasets.push({
         label: "Daily Gain",
         data: dailyGains,
-        borderColor: colors.gain,
-        backgroundColor: colors.gain + "33",
+        borderColor: colors.gain.stroke,
+        backgroundColor: colors.gain.fill,
         fill: true,
         tension: 0.1
       });
@@ -643,8 +823,8 @@ async function main() {
       datasets.push({
         label: "Remaining Budget",
         data: cumBudgetRemaining,
-        borderColor: colors.budget,
-        backgroundColor: colors.budget + "33",
+        borderColor: colors.budget.stroke,
+        backgroundColor: colors.budget.fill,
         fill: true,
         tension: 0.3
       });
@@ -653,8 +833,8 @@ async function main() {
       datasets.push({
         label: "Remaining Balance",
         data: cumBalance,
-        borderColor: colors.balance,
-        backgroundColor: colors.balance + "33",
+        borderColor: colors.balance.stroke,
+        backgroundColor: colors.balance.fill,
         fill: true,
         tension: 0.3
       });
@@ -670,11 +850,11 @@ async function main() {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { grid: { color: "rgba(0,0,0,0.05)" }, ticks: { color: "#4B5563" } },
-          y: { grid: { color: "rgba(0,0,0,0.05)" }, ticks: { color: "#4B5563", callback: value => "PHP " + value.toLocaleString() } }
+          x: { grid: { color: gridColor }, ticks: { color: axisColor } },
+          y: { grid: { color: gridColor }, ticks: { color: axisColor, callback: value => "PHP " + value.toLocaleString() } }
         },
         plugins: {
-          legend: { position: "top", labels: { color: "#111827" } },
+          legend: { position: "top", labels: { color: legendColor } },
           tooltip: {
             callbacks: {
               label: (context) => ` ${context.dataset.label}: ${fmtMoney(context.parsed.y)}`
@@ -1428,7 +1608,30 @@ async function main() {
   });
 
   if (syncBtn) syncBtn.addEventListener("click", triggerSync);
-  if (logoutBtn) logoutBtn.onclick = () => {};
+  if (logoutBtn) {
+    logoutBtn.onclick = async () => {
+      if (!isPwaMode) {
+        try {
+          const token = await fetchCsrfToken();
+          await fetch("/api/api?action=logout", {
+            method: "POST",
+            headers: {
+              "X-CSRF-Token": token || "",
+              ...getAuthHeaders(),
+            },
+          });
+        } catch {}
+      }
+
+      clearAuthToken();
+      if (isPwaMode) {
+        setLocalModeUI();
+        window.location.reload();
+      } else {
+        redirectToLogin();
+      }
+    };
+  }
 
   entryForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -1717,38 +1920,25 @@ async function main() {
   function initMobileNav() {
     const toggle = document.querySelector(".nav-toggle");
     const nav = document.querySelector(".site-nav");
+    if (!toggle || !nav) return;
     const navItems = nav.querySelectorAll("button, a, input");
 
-    if (!toggle || !nav) return;
-
-    toggle.addEventListener("click", () => {
-      const isOpen = nav.classList.toggle("is-open");
+    const setOpenState = (isOpen) => {
+      nav.classList.toggle("is-open", isOpen);
+      toggle.classList.toggle("is-active", isOpen);
       toggle.setAttribute("aria-expanded", String(isOpen));
       document.body.style.overflow = isOpen ? "hidden" : "";
+    };
 
-      const spans = toggle.querySelectorAll("span");
-      if (isOpen) {
-        if (spans[0]) spans[0].style.transform = "translateY(6px) rotate(45deg)";
-        if (spans[1]) spans[1].style.opacity = "0";
-        if (spans[2]) spans[2].style.transform = "translateY(-6px) rotate(-45deg)";
-      } else {
-        if (spans[0]) spans[0].style.transform = "";
-        if (spans[1]) spans[1].style.opacity = "1";
-        if (spans[2]) spans[2].style.transform = "";
-      }
+    toggle.addEventListener("click", () => {
+      const isOpen = !nav.classList.contains("is-open");
+      setOpenState(isOpen);
     });
 
     navItems.forEach(item => {
       item.addEventListener("click", () => {
         if (item.id === "syncKeyInput") return;
-        nav.classList.remove("is-open");
-        toggle.setAttribute("aria-expanded", "false");
-        document.body.style.overflow = "";
-
-        const spans = toggle.querySelectorAll("span");
-        if (spans[0]) spans[0].style.transform = "";
-        if (spans[1]) spans[1].style.opacity = "1";
-        if (spans[2]) spans[2].style.transform = "";
+        setOpenState(false);
       });
     });
   }

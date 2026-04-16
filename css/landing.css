@@ -265,6 +265,10 @@ button {
     align-items: center;
 }
 
+.hero-grid > * {
+    min-width: 0;
+}
+
 .hero-copy {
     max-width: 38rem;
 }
@@ -463,6 +467,10 @@ button {
 .feature-band-light {
     background: var(--lp-light);
     color: var(--lp-dark-text);
+}
+
+.feature-band-light .section-heading p {
+    color: var(--lp-dark-muted);
 }
 
 .feature-band-dark {
@@ -703,31 +711,69 @@ button {
 @media (max-width: 979px) {
     .hero-stage {
         min-height: 26rem;
+        overflow: visible;
+        padding-inline: 0.6rem;
     }
 
     .floating-card {
         width: min(15rem, 48vw);
     }
+
+    .floating-card-top {
+        right: 0.4rem;
+    }
+
+    .floating-card-bottom {
+        left: 0.4rem;
+    }
 }
 
 @media (max-width: 760px) {
     .container {
-        width: min(var(--lp-container), calc(100% - 1.25rem));
+        width: min(var(--lp-container), calc(100% - 1rem));
+    }
+
+    .nav-inner {
+        position: relative;
+    }
+
+    .nav {
+        padding: 0.75rem 0;
+        background: rgba(5, 5, 5, 0.82);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .nav,
+    .nav.scrolled {
+        backdrop-filter: none;
     }
 
     .nav-toggle {
         display: flex;
+        position: relative;
+        z-index: 130;
+    }
+
+    .logo {
+        position: relative;
+        z-index: 130;
     }
 
     .nav-links {
         position: fixed;
         inset: 0;
+        z-index: 120;
         display: none;
         flex-direction: column;
-        justify-content: center;
+        justify-content: flex-start;
         align-items: center;
+        gap: 1rem;
         border-radius: 0;
-        padding: 2rem;
+        width: 100vw;
+        max-width: 100%;
+        height: 100dvh;
+        overflow-y: auto;
+        padding: calc(5.25rem + var(--safe-top)) calc(1rem + var(--safe-right)) calc(2rem + var(--safe-bottom)) calc(1rem + var(--safe-left));
         background: rgba(5, 5, 5, 0.95);
     }
 
@@ -737,6 +783,10 @@ button {
 
     .nav-link {
         font-size: 1.3rem;
+    }
+
+    .nav-links .btn {
+        width: min(15rem, 100%);
     }
 
     .hero {
@@ -756,12 +806,13 @@ button {
 
     .hero-stage {
         min-height: 22rem;
+        padding-inline: 0;
     }
 
     .floating-card {
         position: static;
         width: 100%;
-        margin-top: 1rem;
+        margin-top: 0.9rem;
     }
 
     .feature-band,
