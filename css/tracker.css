@@ -1488,6 +1488,53 @@
   right: var(--sp-6);
   bottom: var(--sp-6);
   z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+}
+
+.active-users-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 34px;
+  padding: 0.45rem 0.72rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface-strong) 88%, rgba(8, 14, 30, 0.9));
+  border: 1px solid color-mix(in srgb, var(--color-border) 88%, rgba(255, 255, 255, 0.08));
+  color: var(--color-background-foreground);
+  box-shadow: var(--shadow-md);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.active-users-icon {
+  width: 16px;
+  height: 16px;
+  color: color-mix(in srgb, var(--color-background-foreground) 88%, #ffffff);
+  display: inline-flex;
+}
+
+.active-users-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.active-users-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.22);
+}
+
+.active-users-text {
+  color: var(--color-background-foreground);
+  opacity: 0.96;
 }
 
 .chatbot-fab {
@@ -2253,6 +2300,23 @@
   .chatbot {
     right: 1rem !important;
     bottom: 1rem !important;
+    gap: 0.45rem !important;
+  }
+
+  .active-users-indicator {
+    min-height: 30px;
+    padding: 0.35rem 0.62rem;
+    font-size: 0.72rem;
+  }
+
+  .active-users-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  .active-users-dot {
+    width: 7px;
+    height: 7px;
   }
   
   .chatbot-fab {

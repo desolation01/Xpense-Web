@@ -30,6 +30,7 @@ const crypto = require('crypto');
 const csrfSecret = jwtSecret;
 
 const RATE_LIMIT_STORE = new Map();
+const ACTIVE_USERS = new Map();
 const RATE_LIMIT_RULES = {
   token: { max: 60, windowMs: 60_000 },
   login: { max: 12, windowMs: 15 * 60_000 },
@@ -38,6 +39,8 @@ const RATE_LIMIT_RULES = {
   syncPost: { max: 20, windowMs: 60_000 },
   default: { max: 120, windowMs: 60_000 }
 };
+
+const ACTIVE_WINDOW_MS = 5 * 60 * 1000;
 
 function getClientIp(req) {
   const forwarded = req.headers['x-forwarded-for'];
@@ -89,6 +92,21 @@ function applyRateLimit(req, res, action) {
     return res.status(429).json({ error: 'Too many requests. Please try again later.' });
   }
   return null;
+}
+
+function markUserActive(userId) {
+  if (!userId) return;
+  ACTIVE_USERS.set(String(userId), Date.now());
+}
+
+function getActiveUsersCount() {
+  const now = Date.now();
+  for (const [userId, lastSeen] of ACTIVE_USERS.entries()) {
+    if (now - lastSeen > ACTIVE_WINDOW_MS) {
+      ACTIVE_USERS.delete(userId);
+    }
+  }
+  return ACTIVE_USERS.size;
 }
 
 function generateCsrfToken() {
@@ -288,6 +306,7 @@ module.exports = async (req, res) => {
     if (action === 'status') {
       const auth = requireAuth(req);
       if (auth) {
+        markUserActive(auth.userId);
         return res.status(200).json({ logged_in: true, username: auth.username, userId: auth.userId });
       } else {
         return res.status(200).json({ logged_in: false });
@@ -320,8 +339,18 @@ module.exports = async (req, res) => {
         user_count: userCount || 0,
         entry_count: entryCount || 0,
         total_expenses: totalExpenses,
-        total_gains: totalGains
+        total_gains: totalGains,
+        active_users: getActiveUsersCount()
       });
+    }
+
+    if (action === 'active_users' && req.method === 'GET') {
+      const auth = requireAuth(req);
+      if (!auth) {
+        return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+      }
+      markUserActive(auth.userId);
+      return res.status(200).json({ active_users: getActiveUsersCount() });
     }
 
     if (action === 'logout') {
@@ -374,6 +403,7 @@ module.exports = async (req, res) => {
     }
 
     const userId = auth.userId;
+    markUserActive(userId);
 
     // 3. DATA SYNC
     if (action === 'sync') {

@@ -553,6 +553,18 @@
   </div>
 
   <div class="chatbot">
+    <div class="active-users-indicator" id="activeUsersIndicator" aria-live="polite" hidden>
+      <span class="active-users-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M16 19a4 4 0 0 0-8 0" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+          <circle cx="12" cy="10" r="3.5" stroke="currentColor" stroke-width="1.9" />
+          <path d="M20 18a3.5 3.5 0 0 0-2.8-3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+          <path d="M7 14.6A3.5 3.5 0 0 0 4 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+        </svg>
+      </span>
+      <span class="active-users-dot" aria-hidden="true"></span>
+      <span class="active-users-text"><span id="activeUsersCount">1</span> active</span>
+    </div>
     <button class="chatbot-fab" type="button" aria-haspopup="dialog" aria-expanded="false">
       <span class="fab-icon">💬</span>
       <span class="fab-text">Chat</span>

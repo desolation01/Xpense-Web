@@ -215,6 +215,8 @@ async function main() {
   const userStatus = document.getElementById("userStatus");
   const usernameDisplay = document.getElementById("usernameDisplay");
   const localModeBadge = document.getElementById("localModeBadge");
+  const activeUsersIndicator = document.getElementById("activeUsersIndicator");
+  const activeUsersCount = document.getElementById("activeUsersCount");
   
   const trackerHeader = document.getElementById("trackerHeader");
 
@@ -274,6 +276,7 @@ async function main() {
   let currentChartType = "pie";
   let currentChartMetric = "all";
   const isPwaMode = isPwaStandaloneMode();
+  let activeUsersPollTimer = null;
 
   const chartTypeSelect = document.getElementById("chartTypeSelect");
   const chartMetricSelect = document.getElementById("chartMetricSelect");
@@ -333,6 +336,8 @@ async function main() {
     if (userStatus) userStatus.style.display = "none";
     if (logoutBtn) logoutBtn.style.display = "none";
     if (syncBtn) syncBtn.style.display = "none";
+    if (activeUsersIndicator) activeUsersIndicator.hidden = true;
+    if (activeUsersPollTimer) clearInterval(activeUsersPollTimer);
     setAppVisible();
   }
 
@@ -342,6 +347,8 @@ async function main() {
     if (userStatus) userStatus.style.display = "none";
     if (logoutBtn) logoutBtn.style.display = "none";
     if (syncBtn) syncBtn.style.display = "none";
+    if (activeUsersIndicator) activeUsersIndicator.hidden = true;
+    if (activeUsersPollTimer) clearInterval(activeUsersPollTimer);
     setAppVisible();
   }
 
@@ -353,7 +360,55 @@ async function main() {
     if (syncBtn) syncBtn.style.display = "inline-flex";
     if (usernameDisplay) usernameDisplay.textContent = username || localStorage.getItem(AUTH_USER_KEY) || "User";
     if (username) localStorage.setItem(AUTH_USER_KEY, username);
+    if (activeUsersIndicator) activeUsersIndicator.hidden = false;
     setAppVisible();
+  }
+
+  function setActiveUsersCount(value) {
+    if (!activeUsersCount) return;
+    const safeCount = Number.isFinite(Number(value)) ? Math.max(1, Number(value)) : 1;
+    activeUsersCount.textContent = String(safeCount);
+  }
+
+  async function refreshActiveUsersCount() {
+    if (isPwaMode) return;
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders.Authorization) {
+      if (activeUsersIndicator) activeUsersIndicator.hidden = true;
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/api?action=active_users", {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          ...authHeaders,
+        },
+      });
+
+      if (response.status === 401) {
+        if (activeUsersIndicator) activeUsersIndicator.hidden = true;
+        return;
+      }
+      if (!response.ok) return;
+
+      const data = await response.json();
+      setActiveUsersCount(data.active_users);
+      if (activeUsersIndicator) activeUsersIndicator.hidden = false;
+    } catch (error) {
+      console.warn("Active user counter refresh failed.", error);
+    }
+  }
+
+  function startActiveUsersPolling() {
+    if (activeUsersPollTimer) clearInterval(activeUsersPollTimer);
+    if (isPwaMode) {
+      if (activeUsersIndicator) activeUsersIndicator.hidden = true;
+      return;
+    }
+    refreshActiveUsersCount();
+    activeUsersPollTimer = setInterval(refreshActiveUsersCount, 30000);
   }
 
   function countEntries(entries) {
@@ -479,6 +534,7 @@ async function main() {
   }
 
   await initializeAuthMode();
+  startActiveUsersPolling();
 
   salaryForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -1596,6 +1652,7 @@ async function main() {
       }
 
       clearAuthToken();
+      if (activeUsersPollTimer) clearInterval(activeUsersPollTimer);
       if (isPwaMode) {
         setLocalModeUI();
         window.location.reload();
