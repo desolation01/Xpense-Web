@@ -280,6 +280,14 @@ async function main() {
   };
   let heroPrivacyMasked = false;
 
+  function syncSetupInputs() {
+    salaryInput.value = Number.isFinite(salary) ? String(salary) : "";
+    budgetInput.value = Number.isFinite(budget) ? String(budget) : "";
+    weeklyBudgetInput.value = Number.isFinite(weeklyBudget) ? String(weeklyBudget) : "";
+  }
+
+  syncSetupInputs();
+
   const chartTypeSelect = document.getElementById("chartTypeSelect");
   const chartMetricSelect = document.getElementById("chartMetricSelect");
   const chartMetricLabel = document.getElementById("chartMetricLabel");
@@ -1529,6 +1537,9 @@ async function main() {
     salaryCard.hidden = hasSalary;
     trackerMainLayout.hidden = !hasSalary;
     trackerGrid.classList.toggle("is-ready", hasSalary);
+    if (!hasSalary) {
+      syncSetupInputs();
+    }
     if (hasSalary) {
       renderCalendar();
       updateChart();
@@ -2341,9 +2352,7 @@ async function main() {
 
   initFinancialChatbot();
   editBudgetBtn.onclick = () => {
-    salaryInput.value = salary || "";
-    budgetInput.value = budget || "";
-    weeklyBudgetInput.value = weeklyBudget || "";
+    syncSetupInputs();
     salaryCard.hidden = false;
     trackerMainLayout.hidden = true;
     trackerGrid.classList.remove("is-ready");

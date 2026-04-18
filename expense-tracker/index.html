@@ -22,6 +22,12 @@
   <link rel="stylesheet" href="/css/styles.css?v=2.0.0" />
   <link rel="stylesheet" href="/css/tracker.css?v=2.2.3" />
   <link rel="stylesheet" href="/css/pwa.css" />
+  <style>
+    .tracker-hero .edit-budget-btn::before {
+      content: none;
+      margin-right: 0;
+    }
+  </style>
 
   <!-- Theme restore (before paint to avoid flash) -->
   <script>
@@ -100,7 +106,7 @@
           </div>
 
           <div class="grid tracker-grid" id="trackerGrid">
-            <div class="card tracker-setup" id="salaryCard">
+            <div class="card tracker-setup" id="salaryCard" hidden>
               <h2 class="card-h">Step 1: Enter your monthly salary</h2>
               <p class="card-p">This stays on your device (saved in your browser).</p>
               <form class="tracker-salary-form" id="salaryForm">
