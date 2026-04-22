@@ -47,6 +47,23 @@
     return username ? `${PERSISTENT_CACHE_PREFIX}_${username}` : PERSISTENT_CACHE_PREFIX;
   }
 
+  function isStandaloneMode() {
+    try {
+      return Boolean(
+        window.matchMedia?.("(display-mode: standalone)")?.matches ||
+        window.navigator.standalone
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function getPersistentCacheExpiry() {
+    // In installed PWA mode, keep the unlock cached until explicit logout/account switch.
+    if (isStandaloneMode()) return null;
+    return Date.now() + PERSISTENT_CACHE_TTL_MS;
+  }
+
   function openKeyDb() {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(KEY_DB_NAME, 1);
@@ -165,6 +182,7 @@
 
   async function persistPersistentPassphrase(passphrase) {
     if (!passphrase) return;
+    const expiresAt = getPersistentCacheExpiry();
     try {
       const key = await getOrCreatePersistentWrapKey();
       const iv = window.crypto.getRandomValues(new Uint8Array(IV_BYTES));
@@ -177,7 +195,7 @@
         mode: "wrapped",
         iv: bytesToBase64(iv),
         ciphertext: bytesToBase64(new Uint8Array(encrypted)),
-        expiresAt: Date.now() + PERSISTENT_CACHE_TTL_MS,
+        expiresAt,
       }));
     } catch {
       // Fallback for browsers/PWA containers that cannot persist CryptoKey reliably.
@@ -186,7 +204,7 @@
         localStorage.setItem(getPersistentCacheKey(), JSON.stringify({
           mode: "plain",
           passphrase,
-          expiresAt: Date.now() + PERSISTENT_CACHE_TTL_MS,
+          expiresAt,
         }));
       } catch {}
     }
@@ -197,8 +215,11 @@
       const raw = localStorage.getItem(getPersistentCacheKey());
       if (!raw) return false;
       const parsed = JSON.parse(raw);
-      const expiresAt = Number(parsed?.expiresAt);
-      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return false;
+      const expiresAt = parsed?.expiresAt;
+      if (expiresAt !== null && typeof expiresAt !== "undefined") {
+        const numericExpiry = Number(expiresAt);
+        if (!Number.isFinite(numericExpiry) || numericExpiry <= Date.now()) return false;
+      }
       if (typeof parsed?.passphrase === "string" && parsed.passphrase) return true;
       return typeof parsed?.iv === "string" && typeof parsed?.ciphertext === "string";
     } catch {
@@ -211,10 +232,13 @@
       const raw = localStorage.getItem(getPersistentCacheKey());
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      const expiresAt = Number(parsed?.expiresAt);
-      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
-        localStorage.removeItem(getPersistentCacheKey());
-        return null;
+      const expiresAt = parsed?.expiresAt;
+      if (expiresAt !== null && typeof expiresAt !== "undefined") {
+        const numericExpiry = Number(expiresAt);
+        if (!Number.isFinite(numericExpiry) || numericExpiry <= Date.now()) {
+          localStorage.removeItem(getPersistentCacheKey());
+          return null;
+        }
       }
 
       if (typeof parsed.passphrase === "string" && parsed.passphrase) {
@@ -442,15 +466,17 @@
       elements.submitBtn.textContent = submitLabel;
       elements.passphraseLabel.textContent = isCreateMode ? "New passphrase" : "Passphrase";
       elements.passphraseInput.value = "";
-      elements.passphraseInput.placeholder = isCreateMode ? "Example: mango river planet 204" : "Enter your passphrase";
+      elements.passphraseInput.placeholder = isCreateMode ? "Example: mango river" : "Enter your passphrase";
       elements.passphraseInput.autocomplete = isCreateMode ? "new-password" : "current-password";
       elements.confirmField.hidden = !isCreateMode;
       elements.confirmInput.value = "";
       elements.confirmInput.required = isCreateMode;
-      elements.confirmInput.placeholder = isCreateMode ? "Example: mango river planet-204" : elements.confirmInput.placeholder;
+      elements.confirmInput.placeholder = isCreateMode ? "Example: mango river" : elements.confirmInput.placeholder;
       elements.showPassphrase.checked = isCreateMode;
       if (elements.rememberDevice) {
         elements.rememberDevice.checked = true;
+        elements.rememberDevice.disabled = isStandaloneMode();
+        elements.rememberDevice.parentElement.style.opacity = isStandaloneMode() ? "0.8" : "";
       }
       elements.error.textContent = errorMessage || "";
       if (elements.cancelBtn) {
@@ -530,7 +556,7 @@
 
       if (!passphraseResult || !passphraseResult.passphrase) return false;
       const passphrase = String(passphraseResult.passphrase || "");
-      const rememberOnDevice = Boolean(passphraseResult.rememberOnDevice);
+      const rememberOnDevice = isStandaloneMode() || Boolean(passphraseResult.rememberOnDevice);
 
       if (!hasExistingData && !createIfMissing) {
         persistSessionPassphrase(passphrase);
