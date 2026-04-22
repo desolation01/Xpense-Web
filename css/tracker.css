@@ -384,6 +384,10 @@
   letter-spacing: -0.02em;
 }
 
+[data-theme="light"] .savings-val {
+  color: #0f172a;
+}
+
 /* ── Recent Transactions ── */
 .recent-transactions-card {
   background: var(--color-surface-strong);
@@ -2770,9 +2774,12 @@
 }
 
 [data-theme="light"] .savings-label,
-[data-theme="light"] .savings-val,
 [data-theme="light"] .daily-avg-label {
   color: var(--color-primary);
+}
+
+[data-theme="light"] .savings-val {
+  color: #0f172a;
 }
 
 [data-theme="light"] .trend-badge {
