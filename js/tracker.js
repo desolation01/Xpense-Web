@@ -2135,7 +2135,7 @@ async function main() {
     mirrorToPrimaryStore(getPrivateStateStorageKey(), null);
     await clearLegacySharedPrivateState();
     await clearLegacyPlaintextStorage();
-    window.privateVault.lock({ clearRemembered: true });
+    window.privateVault.lock();
 
     alert("Local data reset successful.");
     window.location.reload();
@@ -2156,7 +2156,7 @@ async function main() {
       } catch {}
 
       clearAuthToken();
-      window.privateVault.lock({ clearRemembered: true });
+      window.privateVault.lock();
       if (activeUsersPollTimer) clearInterval(activeUsersPollTimer);
       redirectToLogin();
     };

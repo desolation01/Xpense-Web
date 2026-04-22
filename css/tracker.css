@@ -1734,25 +1734,6 @@
   margin: 0 auto;
 }
 
-/* ── Global Chat ── */
-.global-chat-container {
-  position: fixed;
-  left: var(--sp-6);
-  bottom: var(--sp-6);
-  z-index: var(--z-overlay);
-}
-
-.global-chat-window {
-  width: min(22rem, calc(100vw - 2rem));
-  background: var(--color-surface-strong);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
 .nickname-input {
   background: var(--color-muted);
   border: 1px solid var(--color-border);
