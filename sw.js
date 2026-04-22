@@ -1,6 +1,6 @@
 const swUrl = new URL(self.location.href);
 const SW_BUILD = swUrl.searchParams.get("build") || "dev";
-const SW_CACHE_REVISION = "vault-ui-32";
+const SW_CACHE_REVISION = "vault-ui-33";
 const SW_VERSION = `xpense-pwa-${SW_BUILD}-${SW_CACHE_REVISION}`;
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const DYNAMIC_CACHE = `${SW_VERSION}-dynamic`;
@@ -15,17 +15,17 @@ const APP_SHELL = [
   "/user-manual",
   "/css/tokens.css",
   "/css/styles.css",
-  "/css/styles.css?v=2.0.3",
+  "/css/styles.css?v=2.0.4",
   "/css/tracker.css",
-  "/css/tracker.css?v=2.2.9",
+  "/css/tracker.css?v=2.3.0",
   "/css/landing.css",
   "/css/pwa.css",
   "/js/localDataStore.js",
-  "/js/localDataStore.js?v=1.0.2",
+  "/js/localDataStore.js?v=1.0.3",
   "/js/privateVault.js",
-  "/js/privateVault.js?v=1.0.17",
+  "/js/privateVault.js?v=1.0.18",
   "/js/tracker.js",
-  "/js/tracker.js?v=1.4.24",
+  "/js/tracker.js?v=1.4.25",
   "/assets/icons/accounts/gcash.svg",
   "/assets/icons/accounts/maya.svg",
   "/assets/icons/accounts/gotyme.svg",
@@ -38,11 +38,11 @@ const APP_SHELL = [
   "/assets/icons/accounts/security-bank.svg",
   "/assets/icons/accounts/eastwest-bank.svg",
   "/js/tracker-auth-page.js",
-  "/js/tracker-auth-page.js?v=1.0.6",
+  "/js/tracker-auth-page.js?v=1.0.7",
   "/js/chat.js",
-  "/js/chat.js?v=1.3.2",
+  "/js/chat.js?v=1.3.3",
   "/js/pwa.js",
-  "/js/pwa.js?v=1.1.2",
+  "/js/pwa.js?v=1.1.3",
   "/assets/hehehe.png",
   "/assets/hero-mockup.png",
   "/assets/icons/icon-192.png",
