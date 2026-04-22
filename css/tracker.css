@@ -3015,6 +3015,12 @@
   word-break: break-all;
 }
 
+@media (max-width: 859px) {
+  .pwa-share-qr {
+    display: block;
+  }
+}
+
 @media (display-mode: standalone) {
   .pwa-share-qr {
     display: block;
