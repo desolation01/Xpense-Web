@@ -840,7 +840,7 @@
 .tracker-modal {
   position: fixed;
   inset: 0;
-  z-index: var(--z-overlay);
+  z-index: 11000;
   display: none;
 }
 
