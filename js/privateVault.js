@@ -6,6 +6,10 @@
   const PBKDF2_ITERATIONS = 250000;
   const SESSION_CACHE_PREFIX = "xpense_vault_session_v1";
   const SESSION_CACHE_TTL_MS = 30 * 60 * 1000;
+  const PERSISTENT_CACHE_PREFIX = "xpense_vault_device_v1";
+  const PERSISTENT_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  const KEY_DB_NAME = "xpense_vault_keys_v1";
+  const KEY_STORE_NAME = "keys";
 
   let cachedPassphrase = null;
   let activeVaultRequest = null;
@@ -38,11 +42,88 @@
     return username ? `${SESSION_CACHE_PREFIX}_${username}` : SESSION_CACHE_PREFIX;
   }
 
+  function getPersistentCacheKey() {
+    const username = String(localStorage.getItem("auth_username") || "").trim().toLowerCase();
+    return username ? `${PERSISTENT_CACHE_PREFIX}_${username}` : PERSISTENT_CACHE_PREFIX;
+  }
+
+  function openKeyDb() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(KEY_DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(KEY_STORE_NAME)) {
+          db.createObjectStore(KEY_STORE_NAME);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Failed to open vault key store."));
+    });
+  }
+
+  async function readKeyFromDb(keyId) {
+    const db = await openKeyDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(KEY_STORE_NAME, "readonly");
+      const store = tx.objectStore(KEY_STORE_NAME);
+      const request = store.get(keyId);
+      request.onsuccess = () => {
+        db.close();
+        resolve(request.result || null);
+      };
+      request.onerror = () => {
+        db.close();
+        reject(request.error || new Error("Failed to read vault key."));
+      };
+    });
+  }
+
+  async function writeKeyToDb(keyId, key) {
+    const db = await openKeyDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(KEY_STORE_NAME, "readwrite");
+      const store = tx.objectStore(KEY_STORE_NAME);
+      const request = store.put(key, keyId);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error || new Error("Failed to store vault key."));
+      tx.oncomplete = () => db.close();
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error || new Error("Failed to complete vault key write."));
+      };
+    });
+  }
+
+  async function getOrCreatePersistentWrapKey() {
+    const keyId = `${getPersistentCacheKey()}_wrap_key`;
+    const existing = await readKeyFromDb(keyId);
+    if (existing) return existing;
+
+    const nextKey = await window.crypto.subtle.generateKey(
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"]
+    );
+    await writeKeyToDb(keyId, nextKey);
+    return nextKey;
+  }
+
+  async function clearPersistentPassphrase() {
+    try {
+      localStorage.removeItem(getPersistentCacheKey());
+    } catch {}
+  }
+
   function clearSessionPassphrase() {
     cachedPassphrase = null;
     try {
       sessionStorage.removeItem(getSessionCacheKey());
     } catch {}
+  }
+
+  function clearAllCachedPassphrases() {
+    clearSessionPassphrase();
+    clearPersistentPassphrase();
   }
 
   function persistSessionPassphrase(passphrase) {
@@ -77,6 +158,57 @@
     } catch {
       try {
         sessionStorage.removeItem(getSessionCacheKey());
+      } catch {}
+      return null;
+    }
+  }
+
+  async function persistPersistentPassphrase(passphrase) {
+    if (!passphrase) return;
+    try {
+      const key = await getOrCreatePersistentWrapKey();
+      const iv = window.crypto.getRandomValues(new Uint8Array(IV_BYTES));
+      const encrypted = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        key,
+        textEncoder.encode(passphrase)
+      );
+      localStorage.setItem(getPersistentCacheKey(), JSON.stringify({
+        iv: bytesToBase64(iv),
+        ciphertext: bytesToBase64(new Uint8Array(encrypted)),
+        expiresAt: Date.now() + PERSISTENT_CACHE_TTL_MS,
+      }));
+    } catch {
+      // Keep UX resilient; failure falls back to session-only unlock.
+    }
+  }
+
+  async function restorePersistentPassphrase() {
+    try {
+      const raw = localStorage.getItem(getPersistentCacheKey());
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const expiresAt = Number(parsed?.expiresAt);
+      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+        localStorage.removeItem(getPersistentCacheKey());
+        return null;
+      }
+
+      if (typeof parsed.iv !== "string" || typeof parsed.ciphertext !== "string") {
+        localStorage.removeItem(getPersistentCacheKey());
+        return null;
+      }
+
+      const key = await getOrCreatePersistentWrapKey();
+      const decrypted = await window.crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: base64ToBytes(parsed.iv) },
+        key,
+        base64ToBytes(parsed.ciphertext)
+      );
+      return textDecoder.decode(decrypted);
+    } catch {
+      try {
+        localStorage.removeItem(getPersistentCacheKey());
       } catch {}
       return null;
     }
@@ -171,6 +303,7 @@
       confirmField: document.getElementById("vaultConfirmField"),
       confirmInput: document.getElementById("vaultConfirmInput"),
       showPassphrase: document.getElementById("vaultShowPassphrase"),
+      rememberDevice: document.getElementById("vaultRememberDevice"),
       error: document.getElementById("vaultModalError"),
       warning: document.getElementById("vaultModalWarning"),
       submitBtn: document.getElementById("vaultSubmitBtn"),
@@ -269,7 +402,10 @@
           return;
         }
 
-        finish(passphrase);
+        finish({
+          passphrase,
+          rememberOnDevice: Boolean(elements.rememberDevice?.checked),
+        });
       };
 
       elements.title.textContent = title;
@@ -286,6 +422,9 @@
       elements.confirmInput.required = isCreateMode;
       elements.confirmInput.placeholder = isCreateMode ? "Example: mango river planet-204" : elements.confirmInput.placeholder;
       elements.showPassphrase.checked = isCreateMode;
+      if (elements.rememberDevice) {
+        elements.rememberDevice.checked = true;
+      }
       elements.error.textContent = errorMessage || "";
       if (elements.cancelBtn) {
         elements.cancelBtn.hidden = !isDismissible;
@@ -325,26 +464,28 @@
     }
 
     const restoredPassphrase = restoreSessionPassphrase();
+    const restoredDevicePassphrase = restoredPassphrase ? null : await restorePersistentPassphrase();
+    const restoredAnyPassphrase = restoredPassphrase || restoredDevicePassphrase;
 
-    if ((cachedPassphrase || restoredPassphrase) && !forcePrompt) {
+    if ((cachedPassphrase || restoredAnyPassphrase) && !forcePrompt) {
       if (!existingEnvelope) return true;
       try {
         await decryptJSON(existingEnvelope);
-        persistSessionPassphrase(cachedPassphrase || restoredPassphrase);
+        persistSessionPassphrase(cachedPassphrase || restoredAnyPassphrase);
         return true;
       } catch {
-        clearSessionPassphrase();
+        clearAllCachedPassphrases();
       }
     }
 
     const hasExistingData = Boolean(existingEnvelope);
     let lastErrorMessage = "";
     while (true) {
-      const passphrase = await requestPassphrase(
+      const passphraseResult = await requestPassphrase(
         hasExistingData ? {
           mode: "unlock",
           title: "Unlock your encrypted finance data",
-          description: "This passphrase stays in your browser session and unlocks your protected tracker data locally.",
+          description: "This passphrase unlocks your protected tracker data locally. You can remember it on this device for 7 days.",
           message: "Enter the passphrase you created for this account to view salary, budgets, and calendar entries.",
           warning: "If you forgot your passphrase, the encrypted data cannot be recovered by the developer or server.",
           submitLabel: "Unlock Vault",
@@ -360,10 +501,17 @@
         }
       );
 
-      if (!passphrase) return false;
+      if (!passphraseResult || !passphraseResult.passphrase) return false;
+      const passphrase = String(passphraseResult.passphrase || "");
+      const rememberOnDevice = Boolean(passphraseResult.rememberOnDevice);
 
       if (!hasExistingData && !createIfMissing) {
         persistSessionPassphrase(passphrase);
+        if (rememberOnDevice) {
+          await persistPersistentPassphrase(passphrase);
+        } else {
+          clearPersistentPassphrase();
+        }
         return true;
       }
 
@@ -372,6 +520,11 @@
           await decryptJSON(existingEnvelope, passphrase);
         }
         persistSessionPassphrase(passphrase);
+        if (rememberOnDevice) {
+          await persistPersistentPassphrase(passphrase);
+        } else {
+          clearPersistentPassphrase();
+        }
         return true;
       } catch {
         lastErrorMessage = "That passphrase could not unlock your encrypted data. Please try again.";
@@ -380,7 +533,7 @@
   }
 
   function lock() {
-    clearSessionPassphrase();
+    clearAllCachedPassphrases();
   }
 
   window.privateVault = {
