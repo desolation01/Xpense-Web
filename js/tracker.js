@@ -2239,7 +2239,6 @@ async function main() {
       }
       if (accountNameTextInput) {
         accountNameTextInput.style.display = "";
-        accountNameTextInput.required = true;
         accountNameTextInput.placeholder = "Ex: Wallet, Piggybank, Cabinet";
         accountNameTextInput.value = selectedName || "";
       }
@@ -2248,12 +2247,10 @@ async function main() {
 
     if (accountNameTextInput) {
       accountNameTextInput.style.display = "none";
-      accountNameTextInput.required = false;
       accountNameTextInput.value = "";
     }
     if (accountNameInput) {
       accountNameInput.style.display = "";
-      accountNameInput.required = true;
     }
 
     const providers = normalizedType === "E-Wallet" ? E_WALLET_OPTIONS : BANK_OPTIONS;

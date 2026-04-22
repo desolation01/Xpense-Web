@@ -2805,6 +2805,81 @@
   background: color-mix(in srgb, var(--color-surface) 72%, var(--color-muted));
 }
 
+/* ── Light Mode: Navbar ── */
+[data-theme="light"] #usernameDisplay {
+  color: #1e293b !important;
+}
+
+[data-theme="light"] #logoutBtn {
+  color: #374151 !important;
+  background: transparent !important;
+}
+
+[data-theme="light"] #logoutBtn:hover {
+  color: #111827 !important;
+  background: rgba(0,0,0,0.06) !important;
+}
+
+[data-theme="light"] #resetTrackerBtn {
+  color: #374151 !important;
+  background: rgba(0,0,0,0.05) !important;
+  border-color: rgba(0,0,0,0.12) !important;
+}
+
+[data-theme="light"] #resetTrackerBtn:hover {
+  background: rgba(0,0,0,0.1) !important;
+  color: #111827 !important;
+}
+
+[data-theme="light"] .tracker-sync-btn {
+  color: #374151 !important;
+}
+
+[data-theme="light"] .tracker-sync-btn:hover {
+  color: #111827 !important;
+  background: rgba(0,0,0,0.06) !important;
+}
+
+/* ── Light Mode: Accounts Modal ── */
+[data-theme="light"] .accounts-modal-panel {
+  background: #f4f8fc !important;
+}
+
+[data-theme="light"] .accounts-modal-panel .tracker-modal-head {
+  background: #ffffff !important;
+  border-bottom-color: #d3dbe7 !important;
+}
+
+[data-theme="light"] .accounts-modal-panel .tracker-modal-body {
+  background: #f4f8fc !important;
+}
+
+[data-theme="light"] .accounts-modal-panel .accounts-footer {
+  border-top-color: #d3dbe7 !important;
+}
+
+[data-theme="light"] .accounts-modal-panel .accounts-summary-line {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .accounts-modal-panel .accounts-summary-line strong {
+  color: #0369a1 !important;
+}
+
+[data-theme="light"] .accounts-modal-panel .tracker-entry-form {
+  border-top-color: #d3dbe7 !important;
+}
+
+[data-theme="light"] .accounts-modal-panel .field-label {
+  color: #374151 !important;
+}
+
+[data-theme="light"] .accounts-modal-panel .field-input {
+  background: #ffffff !important;
+  border-color: #d3dbe7 !important;
+  color: #1e293b !important;
+}
+
 /* Dashboard mobile nav: match landing menu visual language */
 @media (max-width: 859px) {
   .site-nav[aria-label="Secondary"] {
