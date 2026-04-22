@@ -1,6 +1,6 @@
 const swUrl = new URL(self.location.href);
 const SW_BUILD = swUrl.searchParams.get("build") || "dev";
-const SW_CACHE_REVISION = "vault-ui-22";
+const SW_CACHE_REVISION = "vault-ui-23";
 const SW_VERSION = `xpense-pwa-${SW_BUILD}-${SW_CACHE_REVISION}`;
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const DYNAMIC_CACHE = `${SW_VERSION}-dynamic`;
