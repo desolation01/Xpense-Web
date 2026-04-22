@@ -1,14 +1,9 @@
-const STORAGE_SALARY = "expense_tracker_salary";
-const STORAGE_BUDGET = "expense_tracker_budget";
-const STORAGE_WEEKLY_BUDGET = "expense_tracker_weekly_budget";
-const STORAGE_ENTRIES = "expense_tracker_entries_v2";
-
-const TRACKER_STORAGE_DEFAULTS = {
-  [STORAGE_SALARY]: null,
-  [STORAGE_BUDGET]: null,
-  [STORAGE_WEEKLY_BUDGET]: null,
-  [STORAGE_ENTRIES]: {},
-};
+const LEGACY_SHARED_PRIVATE_STATE = "expense_tracker_private_state_v1";
+const STORAGE_PRIVATE_STATE_PREFIX = "expense_tracker_private_state_v1";
+const LEGACY_STORAGE_SALARY = "expense_tracker_salary";
+const LEGACY_STORAGE_BUDGET = "expense_tracker_budget";
+const LEGACY_STORAGE_WEEKLY_BUDGET = "expense_tracker_weekly_budget";
+const LEGACY_STORAGE_ENTRIES = "expense_tracker_entries_v2";
 
 const AUTH_TOKEN_KEY = "auth_token";
 const AUTH_USER_KEY = "auth_username";
@@ -43,40 +38,9 @@ function redirectToLogin() {
   window.location.replace(`/tracker-login?next=${next}`);
 }
 
-async function hydrateFromLocalStore() {
-  if (!window.localDataStore) return;
-
-  try {
-    await window.localDataStore.seedDefaults(TRACKER_STORAGE_DEFAULTS);
-
-    const keys = [STORAGE_SALARY, STORAGE_BUDGET, STORAGE_WEEKLY_BUDGET, STORAGE_ENTRIES];
-    for (const key of keys) {
-      const idbValue = await window.localDataStore.getData(key);
-      const localRaw = localStorage.getItem(key);
-
-      if ((typeof idbValue === "undefined" || idbValue === null) && localRaw !== null) {
-        const migrated = key === STORAGE_ENTRIES ? JSON.parse(localRaw || "{}") : Number(localRaw);
-        if (key === STORAGE_ENTRIES) {
-          await window.localDataStore.saveData(key, migrated && typeof migrated === "object" ? migrated : {});
-        } else if (Number.isFinite(migrated)) {
-          await window.localDataStore.saveData(key, migrated);
-        }
-        continue;
-      }
-
-      if (typeof idbValue !== "undefined") {
-        if (idbValue === null) {
-          localStorage.removeItem(key);
-        } else if (key === STORAGE_ENTRIES) {
-          localStorage.setItem(key, JSON.stringify(idbValue));
-        } else {
-          localStorage.setItem(key, String(idbValue));
-        }
-      }
-    }
-  } catch (error) {
-    console.warn("Local store hydration failed, continuing with localStorage fallback.", error);
-  }
+function getPrivateStateStorageKey() {
+  const username = String(localStorage.getItem(AUTH_USER_KEY) || "").trim().toLowerCase();
+  return username ? `${STORAGE_PRIVATE_STATE_PREFIX}_${username}` : STORAGE_PRIVATE_STATE_PREFIX;
 }
 
 function mirrorToPrimaryStore(key, value) {
@@ -114,79 +78,110 @@ function isoDate(d) {
   return `${y}-${m}-${day}`;
 }
 
-function loadSalary() {
-  const raw = localStorage.getItem(STORAGE_SALARY);
-  const n = raw ? Number(raw) : NaN;
-  return Number.isFinite(n) ? n : null;
+function createDefaultTrackerState() {
+  return {
+    salary: null,
+    budget: null,
+    weeklyBudget: null,
+    entriesByDay: {},
+  };
 }
 
-function loadBudget() {
-  const raw = localStorage.getItem(STORAGE_BUDGET);
-  const n = raw ? Number(raw) : NaN;
-  return Number.isFinite(n) ? n : null;
+function normalizeEntriesShape(value) {
+  if (!value || typeof value !== "object") return {};
+  if (!Array.isArray(value)) return value;
+
+  const converted = {};
+  Object.keys(value).forEach((key) => {
+    if (isNaN(key)) converted[key] = value[key];
+  });
+  return converted;
 }
 
-function saveSalary(n) {
-  if (!Number.isFinite(n)) {
-    localStorage.removeItem(STORAGE_SALARY);
-    mirrorToPrimaryStore(STORAGE_SALARY, null);
-    return;
-  }
-  localStorage.setItem(STORAGE_SALARY, String(n));
-  mirrorToPrimaryStore(STORAGE_SALARY, n);
-}
-
-function saveBudget(n) {
-  if (!Number.isFinite(n)) {
-    localStorage.removeItem(STORAGE_BUDGET);
-    mirrorToPrimaryStore(STORAGE_BUDGET, null);
-    return;
-  }
-  localStorage.setItem(STORAGE_BUDGET, String(n));
-  mirrorToPrimaryStore(STORAGE_BUDGET, n);
-}
-
-function saveWeeklyBudget(n) {
-  if (!Number.isFinite(n)) {
-    localStorage.removeItem(STORAGE_WEEKLY_BUDGET);
-    mirrorToPrimaryStore(STORAGE_WEEKLY_BUDGET, null);
-    return;
-  }
-  localStorage.setItem(STORAGE_WEEKLY_BUDGET, String(n));
-  mirrorToPrimaryStore(STORAGE_WEEKLY_BUDGET, n);
-}
-
-function loadWeeklyBudget() {
-  const raw = localStorage.getItem(STORAGE_WEEKLY_BUDGET);
-  const n = raw ? Number(raw) : NaN;
-  return Number.isFinite(n) ? n : null;
-}
-
-function loadEntries() {
+async function getStoredValue(key) {
   try {
-    const raw = localStorage.getItem(STORAGE_ENTRIES);
-    if (!raw) return {};
-    let obj = JSON.parse(raw);
-
-    // Ensure it's a standard object, not an array.
-    if (Array.isArray(obj)) {
-      const converted = {};
-      Object.keys(obj).forEach(k => {
-        if (isNaN(k)) converted[k] = obj[k];
-      });
-      return converted;
+    if (window.localDataStore) {
+      const idbValue = await window.localDataStore.getData(key);
+      if (typeof idbValue !== "undefined") return idbValue;
     }
+  } catch (error) {
+    console.warn(`Primary store read failed for ${key}.`, error);
+  }
 
-    return obj && typeof obj === "object" ? obj : {};
+  const raw = localStorage.getItem(key);
+  if (raw == null) return undefined;
+  try {
+    return JSON.parse(raw);
   } catch {
-    return {};
+    return raw;
   }
 }
 
-function saveEntries(obj) {
-  const safe = obj && typeof obj === "object" ? obj : {};
-  localStorage.setItem(STORAGE_ENTRIES, JSON.stringify(safe));
-  mirrorToPrimaryStore(STORAGE_ENTRIES, safe);
+async function setStoredValue(key, value) {
+  if (value === null || typeof value === "undefined") {
+    localStorage.removeItem(key);
+    mirrorToPrimaryStore(key, null);
+    return;
+  }
+
+  localStorage.setItem(key, JSON.stringify(value));
+  mirrorToPrimaryStore(key, value);
+}
+
+async function clearLegacyPlaintextStorage() {
+  const legacyKeys = [
+    LEGACY_STORAGE_SALARY,
+    LEGACY_STORAGE_BUDGET,
+    LEGACY_STORAGE_WEEKLY_BUDGET,
+    LEGACY_STORAGE_ENTRIES,
+  ];
+
+  for (const key of legacyKeys) {
+    localStorage.removeItem(key);
+    mirrorToPrimaryStore(key, null);
+  }
+}
+
+async function clearLegacySharedPrivateState() {
+  localStorage.removeItem(LEGACY_SHARED_PRIVATE_STATE);
+  mirrorToPrimaryStore(LEGACY_SHARED_PRIVATE_STATE, null);
+}
+
+async function readLegacyPlaintextState() {
+  const salaryRaw = localStorage.getItem(LEGACY_STORAGE_SALARY);
+  const budgetRaw = localStorage.getItem(LEGACY_STORAGE_BUDGET);
+  const weeklyBudgetRaw = localStorage.getItem(LEGACY_STORAGE_WEEKLY_BUDGET);
+  const entriesRaw = localStorage.getItem(LEGACY_STORAGE_ENTRIES);
+
+  const idbSalary = await getStoredValue(LEGACY_STORAGE_SALARY);
+  const idbBudget = await getStoredValue(LEGACY_STORAGE_BUDGET);
+  const idbWeeklyBudget = await getStoredValue(LEGACY_STORAGE_WEEKLY_BUDGET);
+  const idbEntries = await getStoredValue(LEGACY_STORAGE_ENTRIES);
+
+  const salaryCandidate = salaryRaw ?? idbSalary;
+  const budgetCandidate = budgetRaw ?? idbBudget;
+  const weeklyBudgetCandidate = weeklyBudgetRaw ?? idbWeeklyBudget;
+  const entriesCandidate = entriesRaw ?? idbEntries;
+
+  const salary = Number.isFinite(Number(salaryCandidate)) ? Number(salaryCandidate) : null;
+  const budget = Number.isFinite(Number(budgetCandidate)) ? Number(budgetCandidate) : null;
+  const weeklyBudget = Number.isFinite(Number(weeklyBudgetCandidate)) ? Number(weeklyBudgetCandidate) : null;
+
+  let entriesByDay = {};
+  try {
+    entriesByDay = normalizeEntriesShape(
+      typeof entriesCandidate === "string" ? JSON.parse(entriesCandidate) : entriesCandidate
+    );
+  } catch {
+    entriesByDay = {};
+  }
+
+  const hasLegacyData = salary !== null ||
+    budget !== null ||
+    weeklyBudget !== null ||
+    Object.keys(entriesByDay).length > 0;
+
+  return hasLegacyData ? { salary, budget, weeklyBudget, entriesByDay } : null;
 }
 
 async function main() {
@@ -257,11 +252,60 @@ async function main() {
     return;
   }
 
-  await hydrateFromLocalStore();
-  let entriesByDay = loadEntries();
-  let salary = loadSalary();
-  let budget = loadBudget();
-  let weeklyBudget = loadWeeklyBudget();
+  if (!window.privateVault || !window.privateVault.isSupported()) {
+    alert("Encrypted storage is not supported in this browser. Xpense cannot load protected finance data here.");
+    return;
+  }
+
+  if (!getAuthHeaders().Authorization) {
+    redirectToLogin();
+    return;
+  }
+
+  async function persistPrivateState() {
+    const safeState = {
+      salary: Number.isFinite(salary) ? salary : null,
+      budget: Number.isFinite(budget) ? budget : null,
+      weeklyBudget: Number.isFinite(weeklyBudget) ? weeklyBudget : null,
+      entriesByDay: entriesByDay && typeof entriesByDay === "object" ? entriesByDay : {},
+    };
+
+    if (!window.privateVault.hasPassphrase()) return;
+
+    try {
+      const encryptedState = await window.privateVault.encryptJSON(safeState);
+      await setStoredValue(getPrivateStateStorageKey(), encryptedState);
+    } catch (error) {
+      console.warn("Failed to persist encrypted tracker state.", error);
+    }
+  }
+
+  async function loadPrivateTrackerState() {
+    const existingEnvelope = await getStoredValue(getPrivateStateStorageKey());
+
+    if (existingEnvelope && typeof existingEnvelope === "object" && existingEnvelope.ciphertext) {
+      const unlocked = await window.privateVault.unlock({
+        existingEnvelope,
+        createIfMissing: false,
+      });
+      if (!unlocked) {
+        throw new Error("Encryption unlock cancelled.");
+      }
+      const decrypted = await window.privateVault.decryptJSON(existingEnvelope);
+      return {
+        salary: Number.isFinite(Number(decrypted?.salary)) ? Number(decrypted.salary) : null,
+        budget: Number.isFinite(Number(decrypted?.budget)) ? Number(decrypted.budget) : null,
+        weeklyBudget: Number.isFinite(Number(decrypted?.weeklyBudget)) ? Number(decrypted.weeklyBudget) : null,
+        entriesByDay: normalizeEntriesShape(decrypted?.entriesByDay),
+      };
+    }
+    return null;
+  }
+
+  let entriesByDay = {};
+  let salary = null;
+  let budget = null;
+  let weeklyBudget = null;
   let viewDate = new Date();
   viewDate.setDate(1);
   let activeDateIso = null;
@@ -279,6 +323,34 @@ async function main() {
     total: false,
   };
   let heroPrivacyMasked = false;
+
+  function saveSalary(value) {
+    salary = Number.isFinite(Number(value)) ? Number(value) : null;
+    persistPrivateState();
+  }
+
+  function saveBudget(value) {
+    budget = Number.isFinite(Number(value)) ? Number(value) : null;
+    persistPrivateState();
+  }
+
+  function saveWeeklyBudget(value) {
+    weeklyBudget = Number.isFinite(Number(value)) ? Number(value) : null;
+    persistPrivateState();
+  }
+
+  function saveEntries(value) {
+    entriesByDay = normalizeEntriesShape(value);
+    persistPrivateState();
+  }
+
+  function applyPrivateTrackerState(state) {
+    const safeState = state && typeof state === "object" ? state : createDefaultTrackerState();
+    salary = Number.isFinite(Number(safeState.salary)) ? Number(safeState.salary) : null;
+    budget = Number.isFinite(Number(safeState.budget)) ? Number(safeState.budget) : null;
+    weeklyBudget = Number.isFinite(Number(safeState.weeklyBudget)) ? Number(safeState.weeklyBudget) : null;
+    entriesByDay = normalizeEntriesShape(safeState.entriesByDay);
+  }
 
   function syncSetupInputs() {
     salaryInput.value = Number.isFinite(salary) ? String(salary) : "";
@@ -480,6 +552,10 @@ async function main() {
     setAppVisible();
   }
 
+  function setVaultLocked(locked) {
+    document.body.classList.toggle("vault-locked", Boolean(locked));
+  }
+
   function setActiveUsersCount(value) {
     if (!activeUsersCount) return;
     const safeCount = Number.isFinite(Number(value)) ? Math.max(1, Number(value)) : 1;
@@ -535,7 +611,7 @@ async function main() {
 
   async function initialSync() {
     const authHeaders = getAuthHeaders();
-    if (!authHeaders.Authorization) return;
+    if (!authHeaders.Authorization) return { skipped: true };
 
     try {
       const response = await fetch("/api/api?action=sync", {
@@ -549,23 +625,42 @@ async function main() {
       if (response.status === 401) {
         clearAuthToken();
         setLoggedOutUI();
-        return;
+        return { unauthorized: true };
       }
 
-      if (!response.ok) return;
+      if (!response.ok) return { skipped: true };
 
       const data = await response.json();
-      salary = Number.isFinite(Number(data.salary)) ? Number(data.salary) : null;
-      budget = Number.isFinite(Number(data.budget)) ? Number(data.budget) : null;
-      weeklyBudget = Number.isFinite(Number(data.weeklyBudget)) ? Number(data.weeklyBudget) : null;
-      entriesByDay = data.entriesByDay && typeof data.entriesByDay === "object" ? data.entriesByDay : {};
+      if (data.encryptedState) {
+        const unlocked = await window.privateVault.unlock({
+          existingEnvelope: data.encryptedState,
+          createIfMissing: false,
+        });
+        if (!unlocked) {
+          return { unlockCancelled: true };
+        }
 
-      saveSalary(salary);
-      saveBudget(budget);
-      saveWeeklyBudget(weeklyBudget);
-      saveEntries(entriesByDay);
+        const decrypted = await window.privateVault.decryptJSON(data.encryptedState);
+        applyPrivateTrackerState(decrypted);
+        await setStoredValue(getPrivateStateStorageKey(), data.encryptedState);
+        syncSetupInputs();
+        return { usedEncryptedState: true };
+      }
+
+      applyPrivateTrackerState({
+        salary: data.salary,
+        budget: data.budget,
+        weeklyBudget: data.weeklyBudget,
+        entriesByDay: data.entriesByDay && typeof data.entriesByDay === "object" ? data.entriesByDay : {},
+      });
+
+      await persistPrivateState();
+      syncSetupInputs();
+      triggerSync();
+      return { syncedPlaintextState: true };
     } catch (error) {
       console.warn("Initial sync skipped due to connection issue.", error);
+      return { skipped: true, error };
     }
   }
 
@@ -576,6 +671,15 @@ async function main() {
     try {
       const token = await fetchCsrfToken();
       if (!token) return;
+      if (!window.privateVault.hasPassphrase()) return;
+
+      const encryptedState = await window.privateVault.encryptJSON({
+        salary: Number.isFinite(salary) ? salary : null,
+        budget: Number.isFinite(budget) ? budget : null,
+        weeklyBudget: Number.isFinite(weeklyBudget) ? weeklyBudget : null,
+        entriesByDay,
+      });
+      await setStoredValue(getPrivateStateStorageKey(), encryptedState);
 
       const response = await fetch("/api/api?action=sync", {
         method: "POST",
@@ -585,11 +689,7 @@ async function main() {
           ...authHeaders,
         },
         body: JSON.stringify({
-          salary,
-          budget,
-          weeklyBudget,
-          entriesByDay,
-          entriesCount: countEntries(entriesByDay),
+          encryptedState,
         }),
       });
 
@@ -633,7 +733,35 @@ async function main() {
       const data = await response.json();
       if (data.logged_in) {
         setLoggedInUI(data.username || localStorage.getItem(AUTH_USER_KEY) || "User");
-        await initialSync();
+        const localPrivateState = await loadPrivateTrackerState();
+        if (localPrivateState) {
+          applyPrivateTrackerState(localPrivateState);
+          syncSetupInputs();
+        } else {
+          const legacyState = await readLegacyPlaintextState();
+          if (legacyState) {
+            applyPrivateTrackerState(legacyState);
+            syncSetupInputs();
+            await clearLegacyPlaintextStorage();
+          }
+        }
+        await clearLegacySharedPrivateState();
+        const syncResult = await initialSync();
+        if (syncResult?.unauthorized) {
+          return;
+        }
+        if (syncResult?.unlockCancelled) {
+          window.privateVault.lock();
+          return;
+        }
+        if (!window.privateVault.hasPassphrase()) {
+          const unlocked = await window.privateVault.unlock({ createIfMissing: true });
+          if (!unlocked) {
+            throw new Error("Encryption setup cancelled.");
+          }
+          await persistPrivateState();
+        }
+        setVaultLocked(false);
       } else {
         clearAuthToken();
         redirectToLogin();
@@ -1750,14 +1878,11 @@ async function main() {
     saveWeeklyBudget(null);
     saveEntries({});
 
-    if (window.localDataStore) {
-      await Promise.all([
-        window.localDataStore.deleteData(STORAGE_SALARY),
-        window.localDataStore.deleteData(STORAGE_BUDGET),
-        window.localDataStore.deleteData(STORAGE_WEEKLY_BUDGET),
-        window.localDataStore.deleteData(STORAGE_ENTRIES)
-      ]).catch(() => {});
-    }
+    localStorage.removeItem(getPrivateStateStorageKey());
+    mirrorToPrimaryStore(getPrivateStateStorageKey(), null);
+    await clearLegacySharedPrivateState();
+    await clearLegacyPlaintextStorage();
+    window.privateVault.lock();
 
     alert("Local data reset successful.");
     window.location.reload();
@@ -1778,6 +1903,7 @@ async function main() {
       } catch {}
 
       clearAuthToken();
+      window.privateVault.lock();
       if (activeUsersPollTimer) clearInterval(activeUsersPollTimer);
       redirectToLogin();
     };

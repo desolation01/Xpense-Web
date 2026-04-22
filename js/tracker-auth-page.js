@@ -15,6 +15,7 @@ function setAuthToken(token, username) {
   localStorage.removeItem("expense_tracker_budget");
   localStorage.removeItem("expense_tracker_weekly_budget");
   localStorage.removeItem("expense_tracker_entries_v2");
+  localStorage.removeItem("expense_tracker_private_state_v1");
 }
 
 let _csrfToken = null;

@@ -260,6 +260,7 @@ function requireAuth(req) {
 const MAX_TEXT_LEN = 120;
 const MAX_CATEGORY_LEN = 60;
 const MAX_AMOUNT = 1_000_000_000;
+const MAX_ENCRYPTED_BLOB_LEN = 1_500_000;
 const ALLOWED_ENTRY_TYPES = new Set(['gain', 'expense']);
 const ALLOWED_RECURRING = new Set(['none', 'daily', 'weekly', 'monthly']);
 
@@ -361,6 +362,44 @@ function normalizeSyncPayload(payload) {
   }
 
   return { salary, budget, weeklyBudget, entriesByDay: normalizedEntriesByDay };
+}
+
+function normalizeEncryptedSyncPayload(payload) {
+  const encryptedState = payload && typeof payload.encryptedState === 'object' ? payload.encryptedState : null;
+  if (!encryptedState) {
+    return null;
+  }
+
+  const version = Number(encryptedState.version);
+  const iterations = Number(encryptedState.iterations);
+  const fields = ['algorithm', 'kdf', 'salt', 'iv', 'ciphertext'];
+
+  if (!Number.isInteger(version) || version < 1 || version > 10) {
+    throw new Error('Invalid encrypted payload version.');
+  }
+
+  if (!Number.isInteger(iterations) || iterations < 100000 || iterations > 1000000) {
+    throw new Error('Invalid encrypted payload iterations.');
+  }
+
+  for (const field of fields) {
+    if (typeof encryptedState[field] !== 'string' || encryptedState[field].length === 0) {
+      throw new Error(`Missing encrypted payload field: ${field}.`);
+    }
+    if (encryptedState[field].length > MAX_ENCRYPTED_BLOB_LEN) {
+      throw new Error('Encrypted payload is too large.');
+    }
+  }
+
+  return {
+    version,
+    algorithm: encryptedState.algorithm,
+    kdf: encryptedState.kdf,
+    iterations,
+    salt: encryptedState.salt,
+    iv: encryptedState.iv,
+    ciphertext: encryptedState.ciphertext,
+  };
 }
 
 // CORS headers
@@ -598,18 +637,72 @@ module.exports = async (req, res) => {
           return res.status(403).json({ status: 'error', error: 'Invalid CSRF token.' });
         }
 
-        let normalizedPayload;
+        let encryptedPayload = null;
+        let normalizedPayload = null;
         try {
-          normalizedPayload = normalizeSyncPayload(req.body || {});
+          encryptedPayload = normalizeEncryptedSyncPayload(req.body || {});
+          if (!encryptedPayload) {
+            normalizedPayload = normalizeSyncPayload(req.body || {});
+          }
         } catch (validationError) {
           return res.status(400).json({
             status: 'error',
             error: validationError.message || 'Invalid sync payload.'
           });
         }
-        const { salary, budget, weeklyBudget, entriesByDay } = normalizedPayload;
 
         try {
+          if (encryptedPayload) {
+            const { error: encryptedSaveError } = await getSupabase()
+              .from('private_sync_state')
+              .upsert({
+                user_id: userId,
+                encrypted_payload: encryptedPayload,
+                encryption_version: encryptedPayload.version,
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'user_id'
+              });
+
+            if (encryptedSaveError) {
+              console.error('Encrypted sync save error:', encryptedSaveError);
+              return res.status(500).json({ status: 'error', error: 'Failed to save encrypted state.' });
+            }
+
+            // Remove legacy plaintext copies after encrypted sync succeeds.
+            const { error: clearSettingsError } = await getSupabase()
+              .from('users')
+              .update({
+                salary: null,
+                monthly_budget: null,
+                weekly_budget: null
+              })
+              .eq('id', userId);
+
+            if (clearSettingsError) {
+              console.error('Legacy settings cleanup error:', clearSettingsError);
+            }
+
+            const { error: clearEntriesError } = await getSupabase()
+              .from('entries')
+              .delete()
+              .eq('user_id', userId);
+
+            if (clearEntriesError) {
+              console.error('Legacy entries cleanup error:', clearEntriesError);
+            }
+
+            await touchActiveUser(userId);
+            return res.status(200).json({
+              status: 'success',
+              ok: true,
+              encrypted: true,
+              userId
+            });
+          }
+
+          const { salary, budget, weeklyBudget, entriesByDay } = normalizedPayload;
+
           // Update user settings
           const { error: settingsError } = await getSupabase()
             .from('users')
@@ -681,6 +774,25 @@ module.exports = async (req, res) => {
       }
 
       if (req.method === 'GET') {
+        const { data: encryptedStateRow, error: encryptedStateError } = await getSupabase()
+          .from('private_sync_state')
+          .select('encrypted_payload, encryption_version, updated_at')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (encryptedStateError) {
+          console.error('Encrypted state load error:', encryptedStateError);
+        }
+
+        if (encryptedStateRow?.encrypted_payload) {
+          await touchActiveUser(userId);
+          return res.status(200).json({
+            encryptedState: encryptedStateRow.encrypted_payload,
+            encryptionVersion: encryptedStateRow.encryption_version || null,
+            updatedAt: encryptedStateRow.updated_at || null
+          });
+        }
+
         // Load user settings
         const { data: settings, error: settingsError } = await getSupabase()
           .from('users')

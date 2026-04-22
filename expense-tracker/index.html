@@ -27,6 +27,146 @@
       content: none;
       margin-right: 0;
     }
+
+    .vault-modal-panel {
+      width: min(560px, calc(100% - 2rem));
+      border-color: rgba(34, 197, 94, 0.18);
+      background:
+        radial-gradient(circle at top right, rgba(34, 197, 94, 0.12), transparent 40%),
+        linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(27, 35, 54, 0.98));
+    }
+
+    .vault-modal-head {
+      background:
+        linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(34, 197, 94, 0.03)),
+        var(--color-surface);
+    }
+
+    .vault-modal-copy {
+      display: grid;
+      gap: var(--sp-2);
+    }
+
+    .vault-modal-badge {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 0.35rem 0.7rem;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(34, 197, 94, 0.2);
+      background: rgba(34, 197, 94, 0.1);
+      color: var(--color-success);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .vault-modal-body {
+      gap: var(--sp-5);
+    }
+
+    .vault-modal-highlight {
+      display: grid;
+      gap: var(--sp-2);
+      padding: var(--sp-4);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(34, 197, 94, 0.16);
+      background: linear-gradient(180deg, rgba(34, 197, 94, 0.08), rgba(39, 47, 66, 0.65));
+    }
+
+    .vault-modal-highlight-title {
+      margin: 0;
+      color: var(--color-background-foreground);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .vault-modal-highlight-copy {
+      margin: 0;
+      color: var(--color-muted-foreground);
+      font-size: var(--text-sm);
+      line-height: 1.6;
+    }
+
+    .vault-modal-form {
+      gap: var(--sp-4);
+    }
+
+    .vault-input {
+      font-family: var(--font-mono);
+    }
+
+    #vaultConfirmField[hidden] {
+      display: none;
+    }
+
+    .vault-checkbox {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-2);
+      color: var(--color-muted-foreground);
+      font-size: var(--text-sm);
+      font-weight: 500;
+    }
+
+    .vault-checkbox input {
+      accent-color: var(--color-accent);
+    }
+
+    .vault-modal-error {
+      min-height: 1.25rem;
+      margin: 0;
+      color: #ff9db0;
+      font-size: var(--text-sm);
+      font-weight: 600;
+    }
+
+    .vault-modal-warning {
+      margin: 0;
+      padding: var(--sp-3) var(--sp-4);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      background: rgba(245, 158, 11, 0.08);
+      color: #f8d48b;
+      font-size: var(--text-sm);
+      line-height: 1.6;
+    }
+
+    .vault-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--sp-3);
+      padding-top: var(--sp-2);
+    }
+
+    body.vault-locked {
+      overflow: hidden;
+    }
+
+    body.vault-locked #trackerHeader,
+    body.vault-locked #trackerMain,
+    body.vault-locked .chatbot {
+      visibility: hidden;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    body.vault-locked #vaultModal {
+      display: block;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    @media (max-width: 640px) {
+      .vault-modal-actions {
+        flex-direction: column-reverse;
+      }
+
+      .vault-modal-actions .btn {
+        width: 100%;
+      }
+    }
   </style>
 
   <!-- Theme restore (before paint to avoid flash) -->
@@ -39,7 +179,7 @@
   </script>
 </head>
 
-<body>
+<body class="vault-locked">
   <!-- <a class="skip-link" href="#main">Skip to content</a> -->
 
   <header class="site-header" id="trackerHeader" style="display: none;">
@@ -135,7 +275,7 @@
             <!-- Main Layout Container for Calendar and Stats -->
             <div class="tracker-main-layout" id="trackerMainLayout" hidden>
 
-              <!-- 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?HERO BANNER & EXTRA 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?-->
+             
               <div class="tracker-hero-row">
                 <div class="tracker-hero" id="trackerHero" style="margin-bottom: 0;" data-hero-card="summary">
                   <button class="hero-privacy-btn" type="button" id="heroPrivacyToggle" aria-label="Hide hero summary values" title="Hide values">
@@ -173,18 +313,7 @@
                   </div>
                 </div>
 
-                <!-- 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?EXTRA SIDE CARDS 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?-->
                 <div class="tracker-side-cards">
-                  <!-- User Manual Card
-                   <a href="#" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: var(--sp-3); text-decoration: none; background: rgba(255,255,255,0.03); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--sp-4); transition: background 0.2s ease;">
-                       <div style="font-size: 1.6rem;">濠电姷顣藉Σ鍛村磻閹捐泛绶ゅù鐘差儏閻ゎ喗銇勯弽顐粶缂?/div>
-                       <div style="text-align: left;">
-                          <div style="font-size: 0.7rem; color: var(--color-muted-foreground); margin-bottom: 2px;">Help Guide</div>
-                          <div style="font-weight: 700; font-size: 0.95rem; color: #fff; white-space: nowrap;">User Manual</div>
-                       </div>
-                   </a>
-                    -->
-                  <!-- Contact Card -->
                   <div
                     style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-4); background: rgba(255,255,255,0.03); border: 1px solid var(--color-border); border-radius: var(--radius-lg);">
                     <div
@@ -212,7 +341,6 @@
                 </div>
               </div>
 
-              <!-- 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?MINI STATS 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?-->
               <div class="tracker-mini-stats">
                 <div class="tracker-mini-stat tracker-mini-stat--green" data-mini-card="monthly">
                   <button class="mini-privacy-btn" type="button" data-mini-privacy-toggle="monthly" aria-label="Hide monthly budget card values" title="Hide values">
@@ -309,10 +437,9 @@
                 </div>
               </div>
 
-              <!-- 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?BODY: LEFT COL + RIGHT PANEL 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?-->
               <div class="tracker-body">
 
-                <!-- Left Column: Calendar 闂?Chart 闂?Final Summary -->
+                
                 <div class="tracker-left-col">
 
                   <!-- Calendar -->
@@ -324,9 +451,9 @@
                       <div class="action-btns">
                         <div id="clearModeBtns" class="clear-confirm-btns" style="display:none">
                           <button class="btn btn-small btn-ghost btn-icon" id="clearConfirmBtn"
-                            title="Confirm clear day">闂傚倸鍊搁崐鐑芥嚄閸撲焦宕叉繝闈涱儐閸婂潡鏌ㄩ弴妤€浜鹃柧鑽ゅ仱閺岀喓鈧數顭堝暩缂?/button>
+                            title="Confirm clear day">Confirm</button>
                           <button class="btn btn-small btn-ghost btn-icon" id="clearCancelBtn"
-                            title="Cancel clear">闂?/button>
+                            title="Cancel clear">Cancel</button>
                         </div>
                         <button class="btn btn-small btn-ghost" id="clearModeBtn"
                           title="Enter day clear mode">Clear</button>
@@ -346,7 +473,7 @@
                     </div>
                     <div class="tracker-calendar-head">
                       <div>
-                        <p class="tracker-month" id="monthLabel">闂?/p>
+                        <p class="tracker-month" id="monthLabel"></p>
                         <p class="tracker-hint">Click a day to add an expense or gain</p>
                       </div>
                       <div class="tracker-calendar-actions">
@@ -600,6 +727,52 @@
     </section>
   </div>
 
+  <div class="tracker-modal vault-modal" id="vaultModal" aria-hidden="true">
+    <div class="tracker-modal-backdrop" data-vault-close="true"></div>
+    <section class="tracker-modal-panel vault-modal-panel" role="dialog" aria-modal="true" aria-labelledby="vaultModalTitle" aria-describedby="vaultModalDescription">
+      <header class="tracker-modal-head vault-modal-head">
+        <div class="vault-modal-copy">
+          <span class="vault-modal-badge">Private Vault</span>
+          <p class="tracker-modal-title" id="vaultModalTitle">Unlock your encrypted finance data</p>
+          <p class="tracker-modal-sub" id="vaultModalDescription">Your passphrase never leaves this browser. Xpense uses it to decrypt your protected salary, budgets, and calendar entries locally.</p>
+        </div>
+        <button class="tracker-modal-close" type="button" aria-label="Close vault dialog" data-vault-close="true">&times;</button>
+      </header>
+
+      <div class="tracker-modal-body vault-modal-body">
+        <div class="vault-modal-highlight">
+          <p class="vault-modal-highlight-title">Only you can open this vault</p>
+          <p class="vault-modal-highlight-copy" id="vaultModalMessage">Enter your encryption passphrase to continue.</p>
+        </div>
+
+        <form class="tracker-entry-form vault-modal-form" id="vaultModalForm">
+          <label class="field">
+            <span class="field-label" id="vaultPassphraseLabel">Passphrase</span>
+            <input class="field-input vault-input" id="vaultPassphraseInput" type="password" autocomplete="current-password" placeholder="Enter your passphrase" required />
+          </label>
+
+          <label class="field" id="vaultConfirmField">
+            <span class="field-label">Confirm passphrase</span>
+            <input class="field-input vault-input" id="vaultConfirmInput" type="password" autocomplete="new-password" placeholder="Re-enter your passphrase" />
+          </label>
+
+          <label class="vault-checkbox">
+            <input id="vaultShowPassphrase" type="checkbox" />
+            <span>Show passphrase</span>
+          </label>
+
+          <p class="vault-modal-error" id="vaultModalError" aria-live="polite"></p>
+          <p class="vault-modal-warning" id="vaultModalWarning">Keep this passphrase safe. If you lose it, encrypted finance data cannot be recovered.</p>
+
+          <div class="vault-modal-actions">
+            <button class="btn btn-ghost" type="button" id="vaultCancelBtn">Cancel</button>
+            <button class="btn btn-primary" type="submit" id="vaultSubmitBtn">Unlock Vault</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+
   <div class="chatbot">
     <div class="active-users-indicator" id="activeUsersIndicator" aria-live="polite" hidden>
       <span class="active-users-icon" aria-hidden="true">
@@ -667,7 +840,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="/js/localDataStore.js?v=1.0.0" defer></script>
-  <script src="/js/tracker.js?v=1.3.0" defer></script>
+  <script src="/js/privateVault.js?v=1.0.9" defer></script>
+  <script src="/js/tracker.js?v=1.4.9" defer></script>
   <script src="/js/chat.js?v=1.3.0" defer></script>
   <script src="/js/pwa.js?v=1.1.0" defer></script>
   <script>
