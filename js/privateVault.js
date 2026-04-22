@@ -183,6 +183,16 @@
   async function persistPersistentPassphrase(passphrase) {
     if (!passphrase) return;
     const expiresAt = getPersistentCacheExpiry();
+    if (isStandaloneMode()) {
+      try {
+        localStorage.setItem(getPersistentCacheKey(), JSON.stringify({
+          mode: "plain-pwa",
+          passphrase,
+          expiresAt,
+        }));
+      } catch {}
+      return;
+    }
     try {
       const key = await getOrCreatePersistentWrapKey();
       const iv = window.crypto.getRandomValues(new Uint8Array(IV_BYTES));
