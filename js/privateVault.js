@@ -530,10 +530,14 @@
     const restoredDevicePassphrase = restoredPassphrase ? null : await restorePersistentPassphrase();
     const restoredAnyPassphrase = restoredPassphrase || restoredDevicePassphrase;
 
+    if (!cachedPassphrase && restoredAnyPassphrase) {
+      cachedPassphrase = restoredAnyPassphrase;
+    }
+
     if ((cachedPassphrase || restoredAnyPassphrase) && !forcePrompt) {
       if (!existingEnvelope) return true;
       try {
-        await decryptJSON(existingEnvelope);
+        await decryptJSON(existingEnvelope, cachedPassphrase || restoredAnyPassphrase);
         persistSessionPassphrase(cachedPassphrase || restoredAnyPassphrase);
         return true;
       } catch {
