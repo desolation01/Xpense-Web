@@ -78,13 +78,45 @@ function isoDate(d) {
   return `${y}-${m}-${day}`;
 }
 
+function parseIsoDateLocal(iso) {
+  const match = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const parsed = new Date(year, monthIndex, day);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function createDefaultTrackerState() {
   return {
-    salary: null,
+    accounts: [],
     budget: null,
     weeklyBudget: null,
     entriesByDay: {},
+    setupComplete: false,
   };
+}
+
+function normalizeAccounts(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((account) => {
+      if (!account || typeof account !== "object") return null;
+      const name = String(account.name || "").trim();
+      const label = String(account.label || "").trim();
+      const type = String(account.type || "Bank").trim() || "Bank";
+      const balance = Number(account.balance);
+      if (!name || !Number.isFinite(balance)) return null;
+      return {
+        id: String(account.id || `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
+        name,
+        label,
+        type,
+        balance: Number(balance.toFixed(2)),
+      };
+    })
+    .filter(Boolean);
 }
 
 function normalizeEntriesShape(value) {
@@ -181,7 +213,13 @@ async function readLegacyPlaintextState() {
     weeklyBudget !== null ||
     Object.keys(entriesByDay).length > 0;
 
-  return hasLegacyData ? { salary, budget, weeklyBudget, entriesByDay } : null;
+  return hasLegacyData ? {
+    accounts: salary !== null ? [{ id: "legacy_balance", name: "Primary Balance", type: "Wallet", balance: salary }] : [],
+    budget,
+    weeklyBudget,
+    entriesByDay,
+    setupComplete: true,
+  } : null;
 }
 
 async function main() {
@@ -190,10 +228,9 @@ async function main() {
   const trackerGrid = document.getElementById("trackerGrid");
   const chartCard = document.getElementById("chartCard");
   const salaryForm = document.getElementById("salaryForm");
-  const salaryInput = document.getElementById("salaryInput");
   const budgetInput = document.getElementById("budgetInput");
   const weeklyBudgetInput = document.getElementById("weeklyBudgetInput");
-  const salaryDisplay = document.getElementById("salaryDisplay");
+  const accountsTotalDisplay = document.getElementById("accountsTotalDisplay");
   const budgetDisplay = document.getElementById("budgetDisplay");
   const weeklyBudgetDisplay = document.getElementById("weeklyBudgetDisplay");
   const remainingDisplay = document.getElementById("remainingDisplay");
@@ -209,6 +246,9 @@ async function main() {
   const activeUsersCount = document.getElementById("activeUsersCount");
   const miniPrivacyButtons = Array.from(document.querySelectorAll("[data-mini-privacy-toggle]"));
   const heroPrivacyToggle = document.getElementById("heroPrivacyToggle");
+  const accountsOpenBtn = document.getElementById("accountsOpenBtn");
+  const accountsLaunchTotal = document.getElementById("accountsLaunchTotal");
+  const accountsCountBadge = document.getElementById("accountsCountBadge");
   
   const trackerHeader = document.getElementById("trackerHeader");
 
@@ -247,7 +287,7 @@ async function main() {
   let badgeMode = "percent"; // 'percent' or 'absolute'
 
   // Essential elements for app to start
-  if (!salaryCard || !trackerGrid || !salaryForm || !salaryInput || !budgetInput || !trackerMain || !trackerMainLayout || !weeklyBudgetInput) {
+  if (!salaryCard || !trackerGrid || !salaryForm || !budgetInput || !trackerMain || !trackerMainLayout || !weeklyBudgetInput) {
     console.error("Critical tracker elements missing from HTML.");
     return;
   }
@@ -264,10 +304,11 @@ async function main() {
 
   async function persistPrivateState() {
     const safeState = {
-      salary: Number.isFinite(salary) ? salary : null,
+      accounts: normalizeAccounts(accounts),
       budget: Number.isFinite(budget) ? budget : null,
       weeklyBudget: Number.isFinite(weeklyBudget) ? weeklyBudget : null,
       entriesByDay: entriesByDay && typeof entriesByDay === "object" ? entriesByDay : {},
+      setupComplete,
     };
 
     if (!window.privateVault.hasPassphrase()) return;
@@ -293,19 +334,21 @@ async function main() {
       }
       const decrypted = await window.privateVault.decryptJSON(existingEnvelope);
       return {
-        salary: Number.isFinite(Number(decrypted?.salary)) ? Number(decrypted.salary) : null,
+        accounts: normalizeAccounts(decrypted?.accounts),
         budget: Number.isFinite(Number(decrypted?.budget)) ? Number(decrypted.budget) : null,
         weeklyBudget: Number.isFinite(Number(decrypted?.weeklyBudget)) ? Number(decrypted.weeklyBudget) : null,
         entriesByDay: normalizeEntriesShape(decrypted?.entriesByDay),
+        setupComplete: Boolean(decrypted?.setupComplete),
       };
     }
     return null;
   }
 
   let entriesByDay = {};
-  let salary = null;
+  let accounts = [];
   let budget = null;
   let weeklyBudget = null;
+  let setupComplete = false;
   let viewDate = new Date();
   viewDate.setDate(1);
   let activeDateIso = null;
@@ -324,8 +367,8 @@ async function main() {
   };
   let heroPrivacyMasked = false;
 
-  function saveSalary(value) {
-    salary = Number.isFinite(Number(value)) ? Number(value) : null;
+  function saveAccounts(value) {
+    accounts = normalizeAccounts(value);
     persistPrivateState();
   }
 
@@ -346,16 +389,20 @@ async function main() {
 
   function applyPrivateTrackerState(state) {
     const safeState = state && typeof state === "object" ? state : createDefaultTrackerState();
-    salary = Number.isFinite(Number(safeState.salary)) ? Number(safeState.salary) : null;
+    accounts = normalizeAccounts(safeState.accounts);
     budget = Number.isFinite(Number(safeState.budget)) ? Number(safeState.budget) : null;
     weeklyBudget = Number.isFinite(Number(safeState.weeklyBudget)) ? Number(safeState.weeklyBudget) : null;
     entriesByDay = normalizeEntriesShape(safeState.entriesByDay);
+    setupComplete = Boolean(safeState.setupComplete);
   }
 
   function syncSetupInputs() {
-    salaryInput.value = Number.isFinite(salary) ? String(salary) : "";
     budgetInput.value = Number.isFinite(budget) ? String(budget) : "";
     weeklyBudgetInput.value = Number.isFinite(weeklyBudget) ? String(weeklyBudget) : "";
+  }
+
+  function getAccountsTotal() {
+    return normalizeAccounts(accounts).reduce((sum, account) => sum + account.balance, 0);
   }
 
   syncSetupInputs();
@@ -376,6 +423,9 @@ async function main() {
   const entryCategoryCustomWrap = document.getElementById("entryCategoryCustomWrap");
   const entryCategoryCustom = document.getElementById("entryCategoryCustom");
   const entryRecurring = document.getElementById("entryRecurring");
+  const entryAccountWrap = document.getElementById("entryAccountWrap");
+  const entryAccountId = document.getElementById("entryAccountId");
+  const entryAccountLabel = entryAccountWrap ? entryAccountWrap.querySelector(".field-label") : null;
 
   const batchDeleteOpenBtn = document.getElementById("batchDeleteOpenBtn");
   const batchDeleteModal = document.getElementById("batchDeleteModal");
@@ -388,7 +438,214 @@ async function main() {
   const clearModeBtns = document.getElementById("clearModeBtns");
   const clearConfirmBtn = document.getElementById("clearConfirmBtn");
   const clearCancelBtn = document.getElementById("clearCancelBtn");
+  const accountsModal = document.getElementById("accountsModal");
+  const accountsList = document.getElementById("accountsList");
+  const accountsModalTotal = document.getElementById("accountsModalTotal");
+  const accountsForm = document.getElementById("accountsForm");
+  const accountNameInput = document.getElementById("accountNameInput");
+  const accountNameTextInput = document.getElementById("accountNameTextInput");
+  const accountTypeInput = document.getElementById("accountTypeInput");
+  const accountBalanceInput = document.getElementById("accountBalanceInput");
+  const accountLabelInput = document.getElementById("accountLabelInput");
+  const accountSubmitBtn = document.getElementById("accountSubmitBtn");
+  const accountEditCancelBtn = document.getElementById("accountEditCancelBtn");
   const syncKeyInput = document.getElementById("syncKeyInput");
+  const E_WALLET_OPTIONS = ["GCash", "Maya", "GoTyme"];
+  const BANK_OPTIONS = [
+    "BDO",
+    "BPI",
+    "MetroBank",
+    "Landbank",
+    "MariBank",
+    "UnionBank",
+    "Security Bank",
+    "EastWest Bank",
+  ];
+  const E_WALLET_NAMES = new Set(E_WALLET_OPTIONS);
+  const ACCOUNT_LOGO_MAP = {
+    "GCash": "https://commons.wikimedia.org/wiki/Special:Redirect/file/GCash%20logo.svg",
+    "Maya": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Maya%20logo.svg",
+    "GoTyme": "https://commons.wikimedia.org/wiki/Special:Redirect/file/GoTyme%20Bank%20logo.svg",
+    "BDO": "https://commons.wikimedia.org/wiki/Special:Redirect/file/BDO%20Unibank%20%28logo%29.svg",
+    "BPI": "https://files.brandlogos.net/svg/p9rFMhuYOp/bpi-logo-brandlogos.net_55rv03izx.svg",
+    "MetroBank": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Metropolitan%20Bank%20and%20Trust%20Company.svg",
+    "Landbank": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Landbank%20New.svg",
+    "MariBank": "https://files.brandlogos.net/svg/a9r8rO8ne5/MariBank-logo_brandlogos.net_ab9319.svg",
+    "UnionBank": "https://commons.wikimedia.org/wiki/Special:Redirect/file/UnionBank%20PH%20logo.svg",
+    "Security Bank": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Security%20Bank%20logo.svg",
+    "EastWest Bank": "https://commons.wikimedia.org/wiki/Special:Redirect/file/EastWest%20Bank%202011%20h-pos%20logo.svg",
+  };
+  const ACCOUNT_THEME_CLASS_MAP = {
+    "GCash": "account-theme-gcash",
+    "Maya": "account-theme-maya",
+    "GoTyme": "account-theme-gotyme",
+    "BDO": "account-theme-bdo",
+    "BPI": "account-theme-bpi",
+    "MetroBank": "account-theme-metrobank",
+    "Landbank": "account-theme-landbank",
+    "MariBank": "account-theme-maribank",
+    "UnionBank": "account-theme-unionbank",
+    "Security Bank": "account-theme-security-bank",
+    "EastWest Bank": "account-theme-eastwest-bank",
+  };
+  let editingAccountId = "";
+
+  function resetAccountEditor() {
+    editingAccountId = "";
+    accountsForm?.reset();
+    if (accountTypeInput) accountTypeInput.value = "Bank";
+    renderAccountNameOptions("Bank", "");
+    if (accountNameTextInput) accountNameTextInput.value = "";
+    if (accountLabelInput) accountLabelInput.value = "";
+    if (accountSubmitBtn) accountSubmitBtn.textContent = "Add Account";
+    if (accountEditCancelBtn) accountEditCancelBtn.style.display = "none";
+  }
+
+  function beginAccountEdit(accountId) {
+    const account = accounts.find((candidate) => candidate.id === accountId);
+    if (!account) return;
+    editingAccountId = account.id;
+    if (accountTypeInput) accountTypeInput.value = account.type || "Bank";
+    renderAccountNameOptions(account.type || "Bank", account.name || "");
+    if (accountNameInput) accountNameInput.value = account.name || "";
+    if (accountNameTextInput) accountNameTextInput.value = account.name || "";
+    if (accountBalanceInput) accountBalanceInput.value = String(account.balance ?? "");
+    if (accountLabelInput) accountLabelInput.value = account.label || "";
+    if (accountSubmitBtn) accountSubmitBtn.textContent = "Save Changes";
+    if (accountEditCancelBtn) accountEditCancelBtn.style.display = "";
+    if (account.type === "Cash On Hand") {
+      accountNameTextInput?.focus();
+    } else {
+      accountNameInput?.focus();
+    }
+  }
+
+  function buildEntryRecurringDates(startIso, recurring) {
+    const dates = [startIso];
+    if (recurring === "none") return dates;
+
+    const firstDate = new Date(startIso);
+    const nextDate = new Date(startIso);
+    const startMonth = firstDate.getMonth();
+    const count = recurring === "monthly" ? 12 : 31;
+
+    for (let i = 1; i <= count; i++) {
+      if (recurring === "daily") {
+        nextDate.setDate(nextDate.getDate() + 1);
+      } else if (recurring === "weekly") {
+        nextDate.setDate(nextDate.getDate() + 7);
+      } else if (recurring === "monthly") {
+        nextDate.setMonth(nextDate.getMonth() + 1);
+      }
+
+      if (recurring !== "monthly" && nextDate.getMonth() !== startMonth) {
+        break;
+      }
+      dates.push(isoDate(nextDate));
+    }
+
+    return dates;
+  }
+
+  function applyAccountDelta(accountId, delta) {
+    if (!accountId || !Number.isFinite(delta) || delta === 0) return false;
+    const idx = accounts.findIndex((account) => account.id === accountId);
+    if (idx < 0) return false;
+    const nextBalance = Number((accounts[idx].balance + delta).toFixed(2));
+    if (nextBalance < -0.0001) return false;
+    accounts[idx] = {
+      ...accounts[idx],
+      balance: Number(Math.max(0, nextBalance).toFixed(2)),
+    };
+    return true;
+  }
+
+  function getAccountDeltaForEntryType(type, amount) {
+    if (!Number.isFinite(amount) || amount <= 0) return 0;
+    if (type === "expense") return -amount;
+    if (type === "gain") return amount;
+    return 0;
+  }
+
+  function restoreAccountForEntry(entry) {
+    if (!entry || !entry.accountId) return;
+    const amount = Number(entry.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const entryDelta = getAccountDeltaForEntryType(entry.type, amount);
+    if (!Number.isFinite(entryDelta) || entryDelta === 0) return;
+    applyAccountDelta(entry.accountId, -entryDelta);
+  }
+
+  function getAccountSpentStats(accountId) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    let totalSpent = 0;
+    let spentThisWeek = 0;
+    let spentThisMonth = 0;
+
+    Object.entries(entriesByDay).forEach(([dateIso, items]) => {
+      if (!Array.isArray(items) || items.length === 0) return;
+      const dayDate = parseIsoDateLocal(dateIso);
+      if (!dayDate) return;
+      if (dayDate > today) return;
+
+      const daySpent = items.reduce((sum, entry) => {
+        if (!entry || entry.type !== "expense" || entry.accountId !== accountId) return sum;
+        const amount = Number(entry.amount);
+        return Number.isFinite(amount) && amount > 0 ? sum + amount : sum;
+      }, 0);
+
+      if (daySpent <= 0) return;
+      totalSpent += daySpent;
+      if (dayDate >= weekStart) spentThisWeek += daySpent;
+      if (dayDate >= monthStart) spentThisMonth += daySpent;
+    });
+
+    return {
+      totalSpent: Number(totalSpent.toFixed(2)),
+      spentThisWeek: Number(spentThisWeek.toFixed(2)),
+      spentThisMonth: Number(spentThisMonth.toFixed(2)),
+    };
+  }
+
+  function populateEntryAccountOptions(selectedId = "") {
+    if (!entryAccountId) return;
+    const safeAccounts = normalizeAccounts(accounts);
+
+    if (safeAccounts.length === 0) {
+      entryAccountId.innerHTML = `<option value="">Add an account first</option>`;
+      entryAccountId.value = "";
+      return;
+    }
+
+    entryAccountId.innerHTML = safeAccounts
+      .map((account) => {
+        const accountDisplayName = account.label
+          ? `${account.name} - ${account.label}`
+          : account.name;
+        return `<option value="${escapeHtml(account.id)}">${escapeHtml(accountDisplayName)} (${fmtMoney(account.balance)})</option>`;
+      })
+      .join("");
+
+    const resolvedId = safeAccounts.some((account) => account.id === selectedId)
+      ? selectedId
+      : safeAccounts[0].id;
+    entryAccountId.value = resolvedId;
+  }
+
+  function updateEntryAccountFieldVisibility() {
+    if (!entryAccountWrap) return;
+    const selectedType = entryType ? entryType.value : "";
+    const shouldShowAccount = selectedType === "expense" || selectedType === "gain";
+    entryAccountWrap.style.display = shouldShowAccount ? "" : "none";
+    if (entryAccountLabel) {
+      entryAccountLabel.textContent = selectedType === "gain" ? "Gain to account" : "Pay with account";
+    }
+  }
 
   if (chartTypeSelect) {
     chartTypeSelect.addEventListener("change", (e) => {
@@ -648,10 +905,11 @@ async function main() {
       }
 
       applyPrivateTrackerState({
-        salary: data.salary,
+        accounts: [],
         budget: data.budget,
         weeklyBudget: data.weeklyBudget,
         entriesByDay: data.entriesByDay && typeof data.entriesByDay === "object" ? data.entriesByDay : {},
+        setupComplete: true,
       });
 
       await persistPrivateState();
@@ -674,10 +932,11 @@ async function main() {
       if (!window.privateVault.hasPassphrase()) return;
 
       const encryptedState = await window.privateVault.encryptJSON({
-        salary: Number.isFinite(salary) ? salary : null,
+        accounts: normalizeAccounts(accounts),
         budget: Number.isFinite(budget) ? budget : null,
         weeklyBudget: Number.isFinite(weeklyBudget) ? weeklyBudget : null,
         entriesByDay,
+        setupComplete,
       });
       await setStoredValue(getPrivateStateStorageKey(), encryptedState);
 
@@ -779,30 +1038,18 @@ async function main() {
 
   salaryForm.addEventListener("submit", (e) => {
     e.preventDefault();
-    let sVal = parseMoney(salaryInput.value);
     let bVal = parseMoney(budgetInput.value);
     let wbVal = parseMoney(weeklyBudgetInput.value);
-    
-    if (isNaN(sVal)) return;
-    
-    // Default budget to 0 if empty/invalid instead of failing silently
+
     if (isNaN(bVal)) bVal = 0;
     if (isNaN(wbVal)) wbVal = 0;
-
-    if (bVal > sVal) {
-      alert("Monthly budget cannot be greater than your monthly salary.");
-      budgetInput.focus();
-      return;
-    }
-
-    salary = sVal;
     budget = bVal;
     weeklyBudget = wbVal;
-    
-    saveSalary(salary);
+    setupComplete = true;
+
     saveBudget(budget);
     saveWeeklyBudget(weeklyBudget);
-    
+    persistPrivateState();
     ensureSetupState();
     triggerSync();
   });
@@ -852,11 +1099,14 @@ async function main() {
     }
 
     const net = monthGain - monthExp;
-    const rem = salary == null ? 0 : (salary + net);
+    const accountsTotal = getAccountsTotal();
+    const rem = accountsTotal + net;
     const monthBudgetRemain = budget ? (budget - monthExp) : 0;
     const weekBudgetRemain = weeklyBudget ? (weeklyBudget - weeklyExp) : 0;
 
-    if (salaryDisplay) salaryDisplay.textContent = salary == null ? "--" : fmtMoney(salary);
+    if (accountsTotalDisplay) accountsTotalDisplay.textContent = fmtMoney(accountsTotal);
+    if (accountsLaunchTotal) accountsLaunchTotal.textContent = fmtMoney(accountsTotal);
+    if (accountsCountBadge) accountsCountBadge.textContent = String(accounts.length);
     
     if (budgetDisplay) {
       budgetDisplay.textContent = budget ? fmtMoney(monthBudgetRemain) : "--";
@@ -1082,7 +1332,7 @@ async function main() {
       curGain += dailyGains[i];
       cumExpenses.push(curExp);
       cumGains.push(curGain);
-      cumBalance.push((salary || 0) + curGain - curExp);
+      cumBalance.push(getAccountsTotal() + curGain - curExp);
     }
 
     const isLightTheme = isLightThemeActive();
@@ -1240,7 +1490,7 @@ async function main() {
     });
 
     // Savings Rate
-    const totalIncome = (salary || 0) + monthlyGain;
+    const totalIncome = getAccountsTotal() + monthlyGain;
     const savings = totalIncome - monthlyExp;
     const rate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
 
@@ -1405,7 +1655,7 @@ async function main() {
 
     const monthName = viewDate.toLocaleString(undefined, { month: "long" });
     const budgetPct = budget > 0 ? (currentTotal / budget * 100).toFixed(1) : 0;
-    const salaryPct = salary > 0 ? (currentTotal / salary * 100).toFixed(1) : 0;
+    const accountsPct = getAccountsTotal() > 0 ? (currentTotal / getAccountsTotal() * 100).toFixed(1) : 0;
 
     let text = `For <b>${monthName} ${y}</b>, you've spent a total of <span class="summary-highlight">${fmtMoney(currentTotal)}</span>. `;
     
@@ -1417,8 +1667,8 @@ async function main() {
       }
     }
 
-    if (salary > 0) {
-      text += `This accounts for <b>${salaryPct}%</b> of your monthly salary. `;
+    if (getAccountsTotal() > 0) {
+      text += `This accounts for <b>${accountsPct}%</b> of your tracked account balances. `;
     }
 
     text += `<br><br><i>Click "Analyze Financials" for a deeper AI-powered breakdown and smart saving tips.</i>`;
@@ -1491,7 +1741,7 @@ async function main() {
 	      const topCategoryText = topCategoryAmount.toLocaleString("en-US", { maximumFractionDigits: 2 });
 	      const maxDaySpentText = maxDayVal.toLocaleString("en-US", { maximumFractionDigits: 2 });
 	      const monthlyBudgetText = Number.isFinite(budget) ? Number(budget).toLocaleString("en-US", { maximumFractionDigits: 2 }) : "Not set";
-	      const monthlySalaryText = Number.isFinite(salary) ? Number(salary).toLocaleString("en-US", { maximumFractionDigits: 2 }) : "Not set";
+	      const accountsTotalText = getAccountsTotal().toLocaleString("en-US", { maximumFractionDigits: 2 });
 	      
 	      const prompt = `
 	        Analyze my ${monthName} ${y} financials in detail:
@@ -1499,10 +1749,10 @@ async function main() {
 	        - Top Category: ${topCategory[0]} (PHP ${topCategoryText})
 	        - Highest Spending Day: ${maxDayStr || "N/A"} (PHP ${maxDaySpentText})
 	        - Monthly Budget: PHP ${monthlyBudgetText}
-	        - Monthly Salary: PHP ${monthlySalaryText}
+	        - Total Account Balances: PHP ${accountsTotalText}
 
         Provide a structured financial review:
-        1. Performance Summary: Include specific percentages (e.g., "% of budget utilized", "% of salary spent", and "Top category share %").
+        1. Performance Summary: Include specific percentages (e.g., "% of budget utilized", "% of account balances spent", and "Top category share %").
         2. Spending Insights: Mention the impact of the highest spending day.
         3. Smart Tips: Provide exactly 3 distinct, actionable "Smart Tips" to improve financial health for next month.
 
@@ -1661,17 +1911,17 @@ async function main() {
   }
 
   function ensureSetupState() {
-    const hasSalary = salary != null && Number.isFinite(salary);
-    salaryCard.hidden = hasSalary;
-    trackerMainLayout.hidden = !hasSalary;
-    trackerGrid.classList.toggle("is-ready", hasSalary);
-    if (!hasSalary) {
+    salaryCard.hidden = setupComplete;
+    trackerMainLayout.hidden = !setupComplete;
+    trackerGrid.classList.toggle("is-ready", setupComplete);
+    if (!setupComplete) {
       syncSetupInputs();
     }
-    if (hasSalary) {
+    if (setupComplete) {
       renderCalendar();
       updateChart();
       updateRecentTransactions();
+      renderAccountsModal();
     }
   }
 
@@ -1686,7 +1936,7 @@ async function main() {
     const monthExp = sumMonthExpenses(entriesByDay, y, m);
     const monthGain = sumMonthGains(entriesByDay, y, m);
     const net = monthGain - monthExp;
-    const rem = salary == null ? 0 : (salary + net);
+    const rem = getAccountsTotal() + net;
     
     let html = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -1708,7 +1958,7 @@ async function main() {
         <h2>Monthly Report: ${monthName}</h2>
         <table>
           <tr class="summary-header">
-            <th>Salary</th>
+            <th>Accounts Total</th>
             <th>Budget</th>
             <th>Total Gains</th>
             <th>Total Expenses</th>
@@ -1716,7 +1966,7 @@ async function main() {
             <th>Remaining Balance</th>
           </tr>
           <tr class="summary-val">
-            <td>${salary || 0}</td>
+            <td>${getAccountsTotal()}</td>
             <td>${budget || 0}</td>
             <td>${monthGain}</td>
             <td>${monthExp}</td>
@@ -1810,10 +2060,11 @@ async function main() {
         version: 1,
         exportedAt: new Date().toISOString(),
         data: {
-          salary,
+          accounts,
           budget,
           weeklyBudget,
-          entriesByDay
+          entriesByDay,
+          setupComplete
         }
       };
 
@@ -1842,12 +2093,13 @@ async function main() {
             throw new Error("Invalid backup file.");
           }
 
-          salary = Number.isFinite(Number(data.salary)) ? Number(data.salary) : null;
+          accounts = normalizeAccounts(data.accounts);
           budget = Number.isFinite(Number(data.budget)) ? Number(data.budget) : null;
           weeklyBudget = Number.isFinite(Number(data.weeklyBudget)) ? Number(data.weeklyBudget) : null;
           entriesByDay = data.entriesByDay && typeof data.entriesByDay === "object" ? data.entriesByDay : {};
+          setupComplete = Boolean(data.setupComplete ?? true);
 
-          saveSalary(salary);
+          saveAccounts(accounts);
           saveBudget(budget);
           saveWeeklyBudget(weeklyBudget);
           saveEntries(entriesByDay);
@@ -1869,11 +2121,12 @@ async function main() {
     if (!confirm("Are you sure? This will permanently delete your local tracker data on this device.")) return;
 
     entriesByDay = {};
-    salary = null;
+    accounts = [];
     budget = null;
     weeklyBudget = null;
+    setupComplete = false;
 
-    saveSalary(null);
+    saveAccounts([]);
     saveBudget(null);
     saveWeeklyBudget(null);
     saveEntries({});
@@ -1909,6 +2162,237 @@ async function main() {
     };
   }
 
+  function renderAccountsModal() {
+    if (!accountsList) return;
+    const safeAccounts = normalizeAccounts(accounts);
+    if (accountsModalTotal) accountsModalTotal.textContent = fmtMoney(getAccountsTotal());
+
+    if (safeAccounts.length === 0) {
+      accountsList.innerHTML = `<div class="accounts-empty-state">No banks or e-wallets added yet. Add one below to keep your balances organized.</div>`;
+      return;
+    }
+
+    accountsList.innerHTML = safeAccounts.map((account) => {
+      const stats = getAccountSpentStats(account.id);
+      return `
+      <div class="account-row ${ACCOUNT_THEME_CLASS_MAP[account.name] || ""}">
+        <div class="account-row-main">
+          ${ACCOUNT_LOGO_MAP[account.name]
+            ? `<img class="account-row-brand" src="${ACCOUNT_LOGO_MAP[account.name]}" alt="${escapeHtml(account.name)} logo" />`
+            : `<p class="account-row-name">${escapeHtml(account.name)}</p>`}
+          ${ACCOUNT_LOGO_MAP[account.name] ? `<p class="account-row-name">${escapeHtml(account.name)}</p>` : ""}
+          ${account.label ? `<p class="account-row-label">${escapeHtml(account.label)}</p>` : ""}
+        </div>
+        <div class="account-row-balance">${fmtMoney(account.balance)}</div>
+        <button class="btn btn-small btn-ghost account-row-edit" type="button" data-account-edit="${escapeHtml(account.id)}">Edit</button>
+        <button class="btn btn-small btn-ghost account-row-remove" type="button" data-account-remove="${escapeHtml(account.id)}">Remove</button>
+        <div class="account-row-stats">
+          <span class="account-row-stat">Total spent: <strong>${fmtMoney(stats.totalSpent)}</strong></span>
+          <span class="account-row-stat">Spent this week: <strong>${fmtMoney(stats.spentThisWeek)}</strong></span>
+          <span class="account-row-stat">Spent this month: <strong>${fmtMoney(stats.spentThisMonth)}</strong></span>
+        </div>
+      </div>
+    `;
+    }).join("");
+
+    accountsList.querySelectorAll("[data-account-edit]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-account-edit");
+        if (!targetId) return;
+        beginAccountEdit(targetId);
+      });
+    });
+
+    accountsList.querySelectorAll("[data-account-remove]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-account-remove");
+        if (!targetId) return;
+        if (editingAccountId && editingAccountId === targetId) {
+          resetAccountEditor();
+        }
+        accounts = accounts.filter((account) => account.id !== targetId);
+        saveAccounts(accounts);
+        renderAccountsModal();
+        populateEntryAccountOptions();
+        updateHeaderTotals();
+        triggerSync();
+      });
+    });
+  }
+
+  if (accountsOpenBtn && accountsModal) {
+    accountsOpenBtn.addEventListener("click", () => {
+      resetAccountEditor();
+      renderAccountsModal();
+      accountsModal.classList.add("is-open");
+    });
+  }
+
+  function renderAccountNameOptions(type = "Bank", selectedName = "") {
+    if (!accountNameInput) return;
+
+    const normalizedType = String(type || "Bank").trim() || "Bank";
+    if (normalizedType === "Cash On Hand") {
+      if (accountNameInput) {
+        accountNameInput.style.display = "none";
+        accountNameInput.required = false;
+        accountNameInput.value = "";
+      }
+      if (accountNameTextInput) {
+        accountNameTextInput.style.display = "";
+        accountNameTextInput.required = true;
+        accountNameTextInput.placeholder = "Ex: Wallet, Piggybank, Cabinet";
+        accountNameTextInput.value = selectedName || "";
+      }
+      return;
+    }
+
+    if (accountNameTextInput) {
+      accountNameTextInput.style.display = "none";
+      accountNameTextInput.required = false;
+      accountNameTextInput.value = "";
+    }
+    if (accountNameInput) {
+      accountNameInput.style.display = "";
+      accountNameInput.required = true;
+    }
+
+    const providers = normalizedType === "E-Wallet" ? E_WALLET_OPTIONS : BANK_OPTIONS;
+    const placeholder = normalizedType === "E-Wallet"
+      ? "Select an e-wallet"
+      : "Select a bank";
+
+    accountNameInput.innerHTML = [
+      `<option value="">${placeholder}</option>`,
+      ...providers.map((provider) => `<option value="${escapeHtml(provider)}">${escapeHtml(provider)}</option>`),
+    ].join("");
+
+    if (providers.includes(selectedName)) {
+      accountNameInput.value = selectedName;
+    }
+  }
+
+  if (accountNameInput && accountTypeInput) {
+    renderAccountNameOptions(accountTypeInput.value || "Bank", accountNameInput.value || "");
+
+    accountTypeInput.addEventListener("change", () => {
+      renderAccountNameOptions(accountTypeInput.value || "Bank", "");
+      if ((accountTypeInput.value || "Bank") === "Cash On Hand") {
+        accountNameTextInput?.focus();
+      } else {
+        accountNameInput.focus();
+      }
+    });
+
+    accountNameInput.addEventListener("change", () => {
+      if ((accountTypeInput?.value || "Bank") === "Cash On Hand") return;
+      const selectedName = String(accountNameInput.value || "");
+      if (!selectedName) return;
+      accountTypeInput.value = E_WALLET_NAMES.has(selectedName) ? "E-Wallet" : "Bank";
+    });
+  }
+
+  document.querySelectorAll("[data-close-accounts]").forEach((element) => {
+    element.addEventListener("click", () => {
+      resetAccountEditor();
+      if (accountsModal) accountsModal.classList.remove("is-open");
+    });
+  });
+
+  if (accountEditCancelBtn) {
+    accountEditCancelBtn.addEventListener("click", () => {
+      resetAccountEditor();
+      accountNameInput?.focus();
+    });
+  }
+
+  if (accountsForm) {
+    accountsForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const label = String(accountLabelInput?.value || "").trim();
+      const type = String(accountTypeInput?.value || "Bank").trim() || "Bank";
+      const name = type === "Cash On Hand"
+        ? String(accountNameTextInput?.value || "").trim()
+        : String(accountNameInput?.value || "").trim();
+      const balance = parseMoney(accountBalanceInput?.value || "");
+
+      if (!name) {
+        alert(type === "Cash On Hand"
+          ? "Please enter a cash account name."
+          : "Please select a bank or e-wallet.");
+        if (type === "Cash On Hand") {
+          accountNameTextInput?.focus();
+        } else {
+          accountNameInput?.focus();
+        }
+        return;
+      }
+
+      if (!Number.isFinite(balance)) {
+        alert("Please enter a valid remaining balance.");
+        accountBalanceInput?.focus();
+        return;
+      }
+
+      const nextBalance = Number(balance.toFixed(2));
+      let preferredAccountId = "";
+      if (editingAccountId) {
+        const editingIndex = accounts.findIndex((account) => account.id === editingAccountId);
+        if (editingIndex < 0) {
+          alert("Selected account was not found. Please try again.");
+          resetAccountEditor();
+          renderAccountsModal();
+          return;
+        }
+
+        const previousName = accounts[editingIndex].name;
+        const previousLabel = accounts[editingIndex].label || "";
+        accounts[editingIndex] = {
+          ...accounts[editingIndex],
+          name,
+          label,
+          type,
+          balance: nextBalance,
+        };
+        preferredAccountId = accounts[editingIndex].id;
+
+        if (previousName !== name || previousLabel !== label) {
+          const nextDisplayName = label ? `${name} - ${label}` : name;
+          Object.values(entriesByDay).forEach((items) => {
+            if (!Array.isArray(items)) return;
+            items.forEach((entry) => {
+              if (entry && entry.accountId === preferredAccountId) {
+                entry.accountName = nextDisplayName;
+                entry.accountLabel = label;
+              }
+            });
+          });
+          saveEntries(entriesByDay);
+        }
+      } else {
+        accounts = [
+          ...accounts,
+          {
+            id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            name,
+            label,
+            type,
+            balance: nextBalance,
+          }
+        ];
+        preferredAccountId = accounts[accounts.length - 1]?.id || "";
+      }
+
+      saveAccounts(accounts);
+      renderAccountsModal();
+      populateEntryAccountOptions(preferredAccountId);
+      updateHeaderTotals();
+      triggerSync();
+      resetAccountEditor();
+      accountNameInput?.focus();
+    });
+  }
+
   function updateCategoryCustomVisibility() {
     const isCustom = entryCategory && entryCategory.value === "__custom__";
     if (entryCategoryCustomWrap) {
@@ -1923,6 +2407,11 @@ async function main() {
     entryCategory.addEventListener("change", updateCategoryCustomVisibility);
     updateCategoryCustomVisibility();
   }
+  if (entryType) {
+    entryType.addEventListener("change", updateEntryAccountFieldVisibility);
+    updateEntryAccountFieldVisibility();
+  }
+  populateEntryAccountOptions();
 
   entryForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -1935,54 +2424,71 @@ async function main() {
       return;
     }
 
+    const parsedAmount = parseMoney(entryAmount.value);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) return;
+
     const item = {
       type: entryType.value,
-      amount: parseMoney(entryAmount.value),
+      amount: parsedAmount,
       label: sanitizedLabel,
       category: isCustomCategory ? customCategoryValue : entryCategory.value,
       recurring: entryRecurring.value,
       ts: Date.now()
     };
-    if (!item.amount) return;
+    const recurringDates = buildEntryRecurringDates(activeDateIso, item.recurring);
 
-    if (!entriesByDay[activeDateIso]) entriesByDay[activeDateIso] = [];
-    entriesByDay[activeDateIso].push(item);
-    
-    // Auto-populate based on frequency
-    if (item.recurring !== "none") {
-      let firstDate = new Date(activeDateIso);
-      let nextDate = new Date(activeDateIso);
-      const startMonth = firstDate.getMonth();
-      
-      // Monthly still adds 12 months, daily/weekly limited to current month
-      const count = item.recurring === "monthly" ? 12 : 31; // Safety cap
-      
-      for (let i = 1; i <= count; i++) {
-        if (item.recurring === "daily") {
-          nextDate.setDate(nextDate.getDate() + 1);
-        } else if (item.recurring === "weekly") {
-          nextDate.setDate(nextDate.getDate() + 7);
-        } else if (item.recurring === "monthly") {
-          nextDate.setMonth(nextDate.getMonth() + 1);
-        }
-        
-        // Check if we exited the current month for daily/weekly
-        if (item.recurring !== "monthly" && nextDate.getMonth() !== startMonth) {
-          break;
-        }
-
-        const iso = isoDate(nextDate);
-        if (!entriesByDay[iso]) entriesByDay[iso] = [];
-        entriesByDay[iso].push({ ...item, ts: Date.now() + i });
+    if (item.type === "expense" || item.type === "gain") {
+      const selectedAccountId = String(entryAccountId?.value || "").trim();
+      if (!selectedAccountId) {
+        alert(item.type === "gain"
+          ? "Please add and select an account to credit this gain to."
+          : "Please add and select an account to deduct this expense from.");
+        return;
       }
+
+      const account = accounts.find((candidate) => candidate.id === selectedAccountId);
+      if (!account) {
+        alert("Selected account was not found. Please choose another account.");
+        populateEntryAccountOptions();
+        return;
+      }
+
+      const totalAmount = Number((item.amount * recurringDates.length).toFixed(2));
+      const totalDelta = getAccountDeltaForEntryType(item.type, totalAmount);
+      if (item.type === "expense" && account.balance < totalAmount) {
+        alert(`Insufficient balance in ${account.name}. Required: ${fmtMoney(totalAmount)}, Available: ${fmtMoney(account.balance)}.`);
+        return;
+      }
+
+      if (!applyAccountDelta(selectedAccountId, totalDelta)) {
+        alert(item.type === "gain"
+          ? "Could not apply account credit. Please try again."
+          : "Could not apply account deduction. Please try again.");
+        return;
+      }
+
+      const accountDisplayName = account.label
+        ? `${account.name} - ${account.label}`
+        : account.name;
+      item.accountId = selectedAccountId;
+      item.accountName = accountDisplayName;
+      item.accountLabel = account.label || "";
     }
+
+    recurringDates.forEach((iso, index) => {
+      if (!entriesByDay[iso]) entriesByDay[iso] = [];
+      entriesByDay[iso].push({ ...item, ts: Date.now() + index });
+    });
 
     entryAmount.value = "";
     entryLabel.value = "";
     if (entryCategoryCustom) entryCategoryCustom.value = "";
     if (entryCategory) entryCategory.value = "General";
     updateCategoryCustomVisibility();
+    populateEntryAccountOptions(item.accountId || "");
+    saveAccounts(accounts);
     saveAndRefresh();
+    renderAccountsModal();
     renderEntriesModal(activeDateIso);
   });
 
@@ -2071,7 +2577,10 @@ async function main() {
           const matchAmt = !Number.isFinite(amt) || it.amount === amt;
           const matchLabel = !label || (it.label && it.label.toLowerCase().includes(label));
           const isMatch = matchCat && matchAmt && matchLabel;
-          if (isMatch) count++;
+          if (isMatch) {
+            count++;
+            restoreAccountForEntry(it);
+          }
           return !isMatch;
         });
 
@@ -2085,6 +2594,9 @@ async function main() {
 
     if (count > 0) {
       alert(`Deleted ${count} matching entries.`);
+      saveAccounts(accounts);
+      renderAccountsModal();
+      populateEntryAccountOptions();
       saveAndRefresh();
       batchDeleteModal.classList.remove("is-open");
       // Reset form
@@ -2109,7 +2621,7 @@ async function main() {
       row.innerHTML = `
         <div class="tracker-entry-main">
           <div class="tracker-entry-label">${escapeHtml(it.label || "Entry")} ${it.recurring && it.recurring !== "none" ? "🔄" : ""}</div>
-          <div class="tracker-entry-meta">${escapeHtml(it.category || "Other")} · ${escapeHtml(it.type || "expense")}${it.recurring && it.recurring !== "none" ? ` · ${escapeHtml(it.recurring || "none")}` : ""}</div>
+          <div class="tracker-entry-meta">${escapeHtml(it.category || "Other")} · ${escapeHtml(it.type || "expense")}${it.recurring && it.recurring !== "none" ? ` · ${escapeHtml(it.recurring || "none")}` : ""}${it.accountName ? ` · ${escapeHtml(it.accountName)}` : ""}</div>
         </div>
         <div class="tracker-entry-actions">
            <div class="tracker-entry-amt ${escapeHtml(it.type || "expense")}">${it.type === "gain" ? "+" : "-"}${fmtMoney(it.amount)}</div>
@@ -2121,8 +2633,13 @@ async function main() {
   }
 
   window.deleteEntry = (dateIso, idx) => {
+    const target = entriesByDay[dateIso] && entriesByDay[dateIso][idx];
+    restoreAccountForEntry(target);
     entriesByDay[dateIso].splice(idx, 1);
     if (entriesByDay[dateIso].length === 0) delete entriesByDay[dateIso];
+    saveAccounts(accounts);
+    renderAccountsModal();
+    populateEntryAccountOptions();
     saveAndRefresh();
     renderEntriesModal(dateIso);
   };
@@ -2155,9 +2672,12 @@ async function main() {
     el.setSelectionRange(cursor, cursor);
   }
 
-  salaryInput.addEventListener("input", formatInputWithCommas);
   budgetInput.addEventListener("input", formatInputWithCommas);
+  weeklyBudgetInput.addEventListener("input", formatInputWithCommas);
   entryAmount.addEventListener("input", formatInputWithCommas);
+  if (accountBalanceInput) {
+    accountBalanceInput.addEventListener("input", formatInputWithCommas);
+  }
 
   // Close modals
   document.querySelectorAll("[data-close]").forEach(el => el.onclick = () => entryModal.classList.remove("is-open"));
@@ -2191,7 +2711,14 @@ async function main() {
     }
     const count = clearTargets.size;
     if (confirm(`Remove all entries for the ${count} selected day(s)?`)) {
-      clearTargets.forEach(iso => delete entriesByDay[iso]);
+      clearTargets.forEach((iso) => {
+        const items = entriesByDay[iso] || [];
+        items.forEach((item) => restoreAccountForEntry(item));
+        delete entriesByDay[iso];
+      });
+      saveAccounts(accounts);
+      renderAccountsModal();
+      populateEntryAccountOptions();
       saveAndRefresh();
       exitClearMode();
     }
@@ -2306,7 +2833,7 @@ async function main() {
       const parts = [
         `Today's Date: ${new Date().toISOString().split('T')[0]}`,
         `Currency: Philippine Peso (PHP)`,
-        `Monthly Salary: PHP ${salary || "Not set"}`,
+        `Tracked Account Balances: PHP ${getAccountsTotal() || "Not set"}`,
         `Monthly Budget: PHP ${budget || "Not set"}`,
         "RECENT TRANSACTIONS (Last 60 days):"
       ];
@@ -2482,7 +3009,7 @@ async function main() {
     salaryCard.hidden = false;
     trackerMainLayout.hidden = true;
     trackerGrid.classList.remove("is-ready");
-    salaryInput.focus();
+    budgetInput.focus();
   };
 
   ensureSetupState();

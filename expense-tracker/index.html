@@ -19,8 +19,8 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="/css/tokens.css" />
-  <link rel="stylesheet" href="/css/styles.css?v=2.0.1" />
-  <link rel="stylesheet" href="/css/tracker.css?v=2.2.4" />
+  <link rel="stylesheet" href="/css/styles.css?v=2.0.2" />
+  <link rel="stylesheet" href="/css/tracker.css?v=2.2.5" />
   <link rel="stylesheet" href="/css/pwa.css" />
   <style>
     .tracker-hero .edit-budget-btn::before {
@@ -140,6 +140,314 @@
       padding-top: var(--sp-2);
     }
 
+    .accounts-launch-card {
+      display: flex;
+      align-items: stretch;
+      justify-content: stretch;
+      min-height: 136px;
+    }
+
+    .accounts-launch-btn {
+      width: 100%;
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      border-radius: var(--radius-lg);
+      background:
+        radial-gradient(circle at top right, rgba(56, 189, 248, 0.14), transparent 45%),
+        linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(24, 35, 58, 0.96));
+      color: var(--color-background-foreground);
+      display: grid;
+      gap: var(--sp-3);
+      padding: var(--sp-4);
+      text-align: left;
+      cursor: pointer;
+      transition: transform var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+    }
+
+    .accounts-launch-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(56, 189, 248, 0.32);
+    }
+
+    .accounts-launch-btn:focus-visible {
+      outline: 2px solid rgba(56, 189, 248, 0.45);
+      outline-offset: 2px;
+    }
+
+    .accounts-launch-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-3);
+    }
+
+    .accounts-launch-kicker {
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #8dd7ff;
+      font-weight: 700;
+    }
+
+    .accounts-launch-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2rem;
+      height: 2rem;
+      padding: 0 0.55rem;
+      border-radius: var(--radius-full);
+      background: rgba(56, 189, 248, 0.12);
+      color: #d8f4ff;
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      font-weight: 700;
+    }
+
+    .accounts-launch-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .accounts-launch-sub {
+      margin: 0;
+      color: var(--color-muted-foreground);
+      font-size: var(--text-sm);
+      line-height: 1.6;
+    }
+
+    .accounts-total-inline {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #d8f4ff;
+    }
+
+    .accounts-modal-panel {
+      width: min(720px, calc(100% - 2rem));
+      background:
+        radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 45%),
+        linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(24, 35, 58, 0.98));
+    }
+
+    .accounts-list {
+      display: grid;
+      gap: var(--sp-3);
+    }
+
+    .account-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      gap: var(--sp-3);
+      align-items: center;
+      padding: var(--sp-4);
+      border-radius: var(--radius-md);
+      border: 1px solid #d8dee8;
+      background: #f5f7fb;
+    }
+
+    .account-row.account-theme-gcash {
+      background: #f5f7fb;
+      border-color: #d8dee8;
+    }
+
+    .account-row.account-theme-maya {
+      background: #f5f7fb;
+      border-color: #d8dee8;
+    }
+
+    .account-row.account-theme-gotyme {
+      background: #f5f7fb;
+      border-color: #d8dee8;
+    }
+
+    .account-row.account-theme-bdo {
+      background: #f5f7fb;
+      border-color: #d8dee8;
+    }
+
+    .account-row.account-theme-bpi {
+      background: #f5f7fb;
+      border-color: #d8dee8;
+    }
+
+    .account-row.account-theme-metrobank {
+      background: #f5f7fb;
+      border-color: #d8dee8;
+    }
+
+    .account-row.account-theme-landbank {
+      background: #f5f7fb;
+      border-color: #d8dee8;
+    }
+
+    .account-row.account-theme-maribank {
+      background: #f5f7fb;
+      border-color: #d8dee8;
+    }
+
+    .account-row.account-theme-unionbank {
+      background: #f5f7fb;
+      border-color: #d8dee8;
+    }
+
+    .account-row.account-theme-security-bank {
+      background: #f5f7fb;
+      border-color: #d8dee8;
+    }
+
+    .account-row.account-theme-eastwest-bank {
+      background: #f5f7fb;
+      border-color: #d8dee8;
+    }
+
+    .account-row-main {
+      display: grid;
+      gap: 0.25rem;
+      min-width: 0;
+    }
+
+    .account-row-brand {
+      width: 96px;
+      height: 32px;
+      object-fit: contain;
+      object-position: left center;
+      filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.2));
+    }
+
+    .account-row-name {
+      margin: 0;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .account-row-type {
+      margin: 0;
+      color: #475569;
+      font-size: var(--text-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .account-row-label {
+      margin: 0;
+      color: #0f172a;
+      font-size: var(--text-sm);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .account-row-balance {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .account-row-remove {
+      border: 1px solid #ef4444;
+      background: rgba(239, 68, 68, 0.16);
+      color: #dc2626;
+      font-weight: 700;
+      transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    .account-row-edit {
+      border: 1px solid #2563eb;
+      background: rgba(37, 99, 235, 0.12);
+      color: #1d4ed8;
+      font-weight: 700;
+      transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    .account-row-edit:hover {
+      border-color: #1d4ed8;
+      background: #2563eb;
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(37, 99, 235, 0.26);
+      transform: translateY(-1px);
+    }
+
+    .account-row-edit:focus-visible {
+      outline: 2px solid rgba(37, 99, 235, 0.35);
+      outline-offset: 2px;
+      border-color: #1d4ed8;
+      background: #2563eb;
+      color: #fff;
+    }
+
+    .account-row-remove:hover {
+      border-color: #dc2626;
+      background: #ef4444;
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(239, 68, 68, 0.28);
+      transform: translateY(-1px);
+    }
+
+    .account-row-remove:focus-visible {
+      outline: 2px solid rgba(220, 38, 38, 0.35);
+      outline-offset: 2px;
+      border-color: #dc2626;
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .account-row-remove:active {
+      background: #b91c1c;
+      border-color: #b91c1c;
+      color: #fff;
+      transform: translateY(0);
+    }
+
+    .account-row-stats {
+      grid-column: 1 / -1;
+      margin-top: 0.15rem;
+      padding-top: 0.6rem;
+      border-top: 1px dashed rgba(71, 85, 105, 0.25);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      font-size: 0.78rem;
+      color: #475569;
+    }
+
+    .account-row-stat strong {
+      font-family: var(--font-mono);
+      color: #0f172a;
+      font-size: 0.8rem;
+      margin-left: 0.2rem;
+    }
+
+    .accounts-empty-state {
+      padding: var(--sp-5);
+      border: 1px dashed var(--color-border);
+      border-radius: var(--radius-lg);
+      text-align: center;
+      color: var(--color-muted-foreground);
+    }
+
+    .accounts-footer {
+      display: grid;
+      gap: var(--sp-4);
+      padding-top: var(--sp-4);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .accounts-summary-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-3);
+      color: var(--color-muted-foreground);
+      font-size: var(--text-sm);
+    }
+
+    .accounts-summary-line strong {
+      color: #d8f4ff;
+      font-family: var(--font-mono);
+      font-size: 1rem;
+    }
+
     body.vault-locked {
       overflow: hidden;
     }
@@ -235,20 +543,15 @@
             <img src="/assets/hehehe.png" alt="Xpense Logo" class="brand-logo-large">
             <h1 class="section-title">Monthly Expense Tracker</h1>
             <p class="section-subtitle">
-              Set your monthly salary, then click a day to add expenses or gains.
+              Set your monthly and weekly budgets, then track spending alongside your wallet and bank balances.
             </p>
           </div>
 
           <div class="grid tracker-grid" id="trackerGrid">
             <div class="card tracker-setup" id="salaryCard" hidden>
-              <h2 class="card-h">Step 1: Enter your monthly salary</h2>
+              <h2 class="card-h">Step 1: Set your budget targets</h2>
               <p class="card-p">This stays on your device (saved in your browser).</p>
               <form class="tracker-salary-form" id="salaryForm">
-                <label class="field">
-                  <span class="field-label">Monthly salary</span>
-                  <input class="field-input" id="salaryInput" inputmode="decimal" autocomplete="off"
-                    placeholder="e.g. 30000" required />
-                </label>
                 <label class="field">
                   <span class="field-label">Monthly budget (Max spend)</span>
                   <input class="field-input" id="budgetInput" inputmode="decimal" autocomplete="off"
@@ -262,7 +565,7 @@
                 <button class="btn btn-primary" id="salarySubmitBtn" type="submit">Continue</button>
               </form>
               <p class="fineprint">
-                Tip: click <strong>Reset</strong> any time to clear salary and expenses.
+                Tip: you can manage your wallets and bank balances after entering the tracker.
               </p>
             </div>
 
@@ -297,19 +600,34 @@
                       <p class="tracker-hero-stat-val" id="weekExpDisplayHero" data-hero-maskable>闂?.00</p>
                     </div>
                     <div class="tracker-hero-divider"></div>
-                    <div class="tracker-hero-stat">
-                      <p class="tracker-hero-stat-label">Salary</p>
-                      <p class="tracker-hero-stat-val" id="salaryDisplay" data-hero-maskable>闂?.00</p>
-                      <p class="tracker-hero-stat-delta">Monthly income</p>
-                    </div>
+                    <!-- <div class="tracker-hero-stat">
+                      <p class="tracker-hero-stat-label">Accounts Total</p>
+                      <p class="tracker-hero-stat-val" id="accountsTotalDisplay" data-hero-maskable>闂?.00</p>
+                      <p class="tracker-hero-stat-delta">Wallets and bank balances</p>
+                    </div> -->
                     <button class="btn btn-small btn-ghost edit-budget-btn" id="editBudgetBtn"
                       title="Edit budgets">Edit</button>
                   </div>
                 </div>
 
+                
                 <div class="tracker-side-cards">
+                  <div class="accounts-launch-card">
+                    <button class="accounts-launch-btn" type="button" id="accountsOpenBtn">
+                      <div class="accounts-launch-top">
+                        <span class="accounts-launch-kicker">Funds Hub</span>
+                        <span class="accounts-launch-count" id="accountsCountBadge">0</span>
+                      </div>
+                      <div>
+                        <p class="accounts-launch-title">Banks and E-Wallets</p>
+                        <p class="accounts-launch-sub">View every account in one place, then add or remove wallets and banks at the bottom.</p>
+                      </div>
+                      <!-- <div class="accounts-total-inline" id="accountsLaunchTotal">闂?.00</div> -->
+                    </button>
+                  </div>
                   <div
                     style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-4); background: rgba(255,255,255,0.03); border: 1px solid var(--color-border); border-radius: var(--radius-lg);">
+                    
                     <div
                       style="font-size: 0.75rem; color: var(--color-muted-foreground); font-weight: 600; white-space: nowrap;">
                       Contact creator</div>
@@ -664,6 +982,11 @@
             </label>
           </div>
 
+          <label class="field" id="entryAccountWrap">
+            <span class="field-label">Pay with account</span>
+            <select class="field-input" id="entryAccountId"></select>
+          </label>
+
           <button class="btn btn-primary" type="submit">Add Entry</button>
           <p class="fineprint">Entries are saved locally on your device. Use Export JSON for backups.</p>
         </form>
@@ -721,6 +1044,70 @@
     </section>
   </div>
 
+  <div class="tracker-modal" id="accountsModal" aria-hidden="true">
+    <div class="tracker-modal-backdrop" data-close-accounts="true"></div>
+    <section class="tracker-modal-panel accounts-modal-panel" role="dialog" aria-modal="true" aria-label="Manage banks and e-wallets">
+      <header class="tracker-modal-head">
+        <div>
+          <p class="tracker-modal-title">Banks and E-Wallets</p>
+          <p class="tracker-modal-sub">See every account balance here. Add or remove institutions at the bottom.</p>
+        </div>
+        <button class="tracker-modal-close" type="button" aria-label="Close accounts modal" data-close-accounts="true">&times;</button>
+      </header>
+      <div class="tracker-modal-body">
+        <div class="accounts-list" id="accountsList"></div>
+        <div class="accounts-footer">
+          <div class="accounts-summary-line">
+            <span>Total available balance</span>
+            <strong id="accountsModalTotal">闂?.00</strong>
+          </div>
+          <form class="tracker-entry-form" id="accountsForm">
+            <div class="tracker-entry-row">
+              <label class="field">
+                <span class="field-label">Account name</span>
+                <select class="field-input" id="accountNameInput" required>
+                  <option value="">Select a bank or e-wallet</option>
+                  <option value="GCash">GCash</option>
+                  <option value="Maya">Maya</option>
+                  <option value="GoTyme">GoTyme</option>
+                  <option value="BDO">BDO</option>
+                  <option value="BPI">BPI</option>
+                  <option value="MetroBank">MetroBank</option>
+                  <option value="Landbank">Landbank</option>
+                  <option value="MariBank">MariBank</option>
+                  <option value="UnionBank">UnionBank</option>
+                  <option value="Security Bank">Security Bank</option>
+                  <option value="EastWest Bank">EastWest Bank</option>
+                </select>
+                <input class="field-input" id="accountNameTextInput" placeholder="Ex: Wallet, Piggybank, Cabinet" style="display:none;" />
+              </label>
+              <label class="field">
+                <span class="field-label">Type</span>
+                <select class="field-input" id="accountTypeInput">
+                  <option value="Bank">Bank</option>
+                  <option value="E-Wallet">E-Wallet</option>
+                  <option value="Cash On Hand">Cash On Hand</option>
+                </select>
+              </label>
+            </div>
+            <label class="field">
+              <span class="field-label">Remaining balance</span>
+              <input class="field-input" id="accountBalanceInput" inputmode="decimal" placeholder="e.g. 12500" required />
+            </label>
+            <label class="field">
+              <span class="field-label">Account label (optional)</span>
+              <input class="field-input" id="accountLabelInput" placeholder="e.g. Savings, Payroll, Emergency Fund" />
+            </label>
+            <div style="display:flex; gap: var(--sp-2); flex-wrap: wrap;">
+              <button class="btn btn-primary" id="accountSubmitBtn" type="submit">Add Account</button>
+              <button class="btn btn-ghost" id="accountEditCancelBtn" type="button" style="display:none;">Cancel Edit</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </div>
+
   <div class="tracker-modal vault-modal" id="vaultModal" aria-hidden="true">
     <div class="tracker-modal-backdrop" data-vault-close="true"></div>
     <section class="tracker-modal-panel vault-modal-panel" role="dialog" aria-modal="true" aria-labelledby="vaultModalTitle" aria-describedby="vaultModalDescription">
@@ -728,7 +1115,7 @@
         <div class="vault-modal-copy">
           <span class="vault-modal-badge">Private Vault</span>
           <p class="tracker-modal-title" id="vaultModalTitle">Unlock your encrypted finance data</p>
-          <p class="tracker-modal-sub" id="vaultModalDescription">Your passphrase never leaves this browser. Xpense uses it to decrypt your protected salary, budgets, and calendar entries locally.</p>
+          <p class="tracker-modal-sub" id="vaultModalDescription">Your passphrase never leaves this browser. Xpense uses it to decrypt your protected budgets, balances, and calendar entries locally.</p>
         </div>
         <button class="tracker-modal-close" type="button" aria-label="Close vault dialog" data-vault-close="true">&times;</button>
       </header>
@@ -833,11 +1220,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="/js/localDataStore.js?v=1.0.0" defer></script>
-  <script src="/js/privateVault.js?v=1.0.12" defer></script>
-  <script src="/js/tracker.js?v=1.4.12" defer></script>
-  <script src="/js/chat.js?v=1.3.0" defer></script>
-  <script src="/js/pwa.js?v=1.1.0" defer></script>
+  <script src="/js/localDataStore.js?v=1.0.1" defer></script>
+  <script src="/js/privateVault.js?v=1.0.14" defer></script>
+  <script src="/js/tracker.js?v=1.4.19" defer></script>
+  <script src="/js/chat.js?v=1.3.1" defer></script>
+  <script src="/js/pwa.js?v=1.1.1" defer></script>
   <script>
     // 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?Theme Toggle 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?
     (function () {
