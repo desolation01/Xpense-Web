@@ -949,6 +949,7 @@ async function main() {
         },
         body: JSON.stringify({
           encryptedState,
+          entriesCount: countEntries(entriesByDay),
         }),
       });
 

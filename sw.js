@@ -1,6 +1,6 @@
 const swUrl = new URL(self.location.href);
 const SW_BUILD = swUrl.searchParams.get("build") || "dev";
-const SW_CACHE_REVISION = "vault-ui-41";
+const SW_CACHE_REVISION = "vault-ui-43";
 const SW_VERSION = `xpense-pwa-${SW_BUILD}-${SW_CACHE_REVISION}`;
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const DYNAMIC_CACHE = `${SW_VERSION}-dynamic`;
@@ -17,7 +17,7 @@ const APP_SHELL = [
   "/css/styles.css",
   "/css/styles.css?v=2.0.7",
   "/css/tracker.css",
-  "/css/tracker.css?v=2.3.3",
+  "/css/tracker.css?v=2.3.4",
   "/css/landing.css",
   "/css/pwa.css",
   "/js/localDataStore.js",
@@ -40,7 +40,7 @@ const APP_SHELL = [
   "/js/tracker-auth-page.js",
   "/js/tracker-auth-page.js?v=1.0.10",
   "/js/pwa.js",
-  "/js/pwa.js?v=1.1.6",
+  "/js/pwa.js?v=1.1.7",
   "/assets/hehehe.png",
   "/assets/hero-mockup.png",
   "/assets/icons/icon-192.png",

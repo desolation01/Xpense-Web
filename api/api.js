@@ -391,6 +391,16 @@ function normalizeEncryptedSyncPayload(payload) {
     }
   }
 
+  const rawEntriesCount = payload && payload.entriesCount;
+  let entriesCount = 0;
+  if (rawEntriesCount !== undefined && rawEntriesCount !== null && rawEntriesCount !== '') {
+    const parsedCount = Number(rawEntriesCount);
+    if (!Number.isFinite(parsedCount) || parsedCount < 0 || parsedCount > 1_000_000) {
+      throw new Error('Invalid encrypted entries count.');
+    }
+    entriesCount = Math.floor(parsedCount);
+  }
+
   return {
     version,
     algorithm: encryptedState.algorithm,
@@ -399,6 +409,7 @@ function normalizeEncryptedSyncPayload(payload) {
     salt: encryptedState.salt,
     iv: encryptedState.iv,
     ciphertext: encryptedState.ciphertext,
+    entriesCount,
   };
 }
 
@@ -550,11 +561,21 @@ module.exports = async (req, res) => {
 
       const totalExpenses = expenseData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
       const totalGains = gainData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+      let encryptedEntryCount = 0;
+      const { data: encryptedMetaRows, error: encryptedMetaError } = await getSupabase()
+        .from('private_sync_state')
+        .select('entries_count');
+      if (!encryptedMetaError && Array.isArray(encryptedMetaRows)) {
+        encryptedEntryCount = encryptedMetaRows.reduce(
+          (sum, row) => sum + (Number(row?.entries_count) || 0),
+          0
+        );
+      }
 
       const activeStats = await getActiveStats();
       return res.status(200).json({
         user_count: userCount || 0,
-        entry_count: entryCount || 0,
+        entry_count: (entryCount || 0) + encryptedEntryCount,
         total_expenses: totalExpenses,
         total_gains: totalGains,
         ...activeStats
@@ -653,16 +674,31 @@ module.exports = async (req, res) => {
 
         try {
           if (encryptedPayload) {
-            const { error: encryptedSaveError } = await getSupabase()
+            let { error: encryptedSaveError } = await getSupabase()
               .from('private_sync_state')
               .upsert({
                 user_id: userId,
                 encrypted_payload: encryptedPayload,
                 encryption_version: encryptedPayload.version,
+                entries_count: encryptedPayload.entriesCount,
                 updated_at: new Date().toISOString()
               }, {
                 onConflict: 'user_id'
               });
+
+            if (encryptedSaveError && String(encryptedSaveError.message || '').includes('entries_count')) {
+              const retry = await getSupabase()
+                .from('private_sync_state')
+                .upsert({
+                  user_id: userId,
+                  encrypted_payload: encryptedPayload,
+                  encryption_version: encryptedPayload.version,
+                  updated_at: new Date().toISOString()
+                }, {
+                  onConflict: 'user_id'
+                });
+              encryptedSaveError = retry.error;
+            }
 
             if (encryptedSaveError) {
               console.error('Encrypted sync save error:', encryptedSaveError);

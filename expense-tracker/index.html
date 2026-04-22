@@ -19,11 +19,11 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet" media="print" onload="this.media='all'" />
-  <link rel="preload" href="/css/tracker.css?v=2.3.3" as="style" />
+  <link rel="preload" href="/css/tracker.css?v=2.3.4" as="style" />
   <link rel="preload" href="/js/tracker.js?v=1.4.29" as="script" />
   <link rel="stylesheet" href="/css/tokens.css" />
   <link rel="stylesheet" href="/css/styles.css?v=2.0.7" />
-  <link rel="stylesheet" href="/css/tracker.css?v=2.3.3" />
+  <link rel="stylesheet" href="/css/tracker.css?v=2.3.4" />
   <link rel="stylesheet" href="/css/pwa.css" />
   <style>
     .tracker-hero .edit-budget-btn::before {
@@ -1095,6 +1095,22 @@
 
               </div><!-- /tracker-body -->
 
+              <section class="pwa-share-qr" aria-label="Share Xpense">
+                <p class="pwa-share-qr-title">Enjoying the app? Share it to your friends</p>
+                <a class="pwa-share-qr-link" href="https://xpense-liart.vercel.app/" target="_blank" rel="noopener noreferrer">
+                  <img
+                    class="pwa-share-qr-image"
+                    src="https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=https%3A%2F%2Fxpense-liart.vercel.app%2F"
+                    alt="QR code linking to xpense-liart.vercel.app"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </a>
+                <a class="pwa-share-qr-url" href="https://xpense-liart.vercel.app/" target="_blank" rel="noopener noreferrer">
+                  https://xpense-liart.vercel.app/
+                </a>
+              </section>
+
             </div>
           </div>
         </div>
@@ -1382,9 +1398,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
   <script src="/js/localDataStore.js?v=1.0.6" defer></script>
-  <script src="/js/privateVault.js?v=1.0.25" defer></script>
+  <script src="/js/privateVault.js?v=1.0.26" defer></script>
   <script src="/js/tracker.js?v=1.4.29" defer></script>
-  <script src="/js/pwa.js?v=1.1.6" defer></script>
+  <script src="/js/pwa.js?v=1.1.7" defer></script>
   <script>
     // 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?Theme Toggle 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?
     (function () {

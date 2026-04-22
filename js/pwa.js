@@ -24,6 +24,10 @@
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
   }
 
+  function syncStandaloneClass() {
+    document.body.classList.toggle("is-standalone", Boolean(isStandaloneMode()));
+  }
+
   function showIosInstallHelp() {
     alert('In Safari: tap Share > Add to Home Screen.');
   }
@@ -418,6 +422,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    syncStandaloneClass();
     createOfflineIndicator();
     setupInstallFlow();
     registerServiceWorker();
