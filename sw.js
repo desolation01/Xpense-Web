@@ -1,6 +1,6 @@
 const swUrl = new URL(self.location.href);
 const SW_BUILD = swUrl.searchParams.get("build") || "dev";
-const SW_CACHE_REVISION = "vault-ui-45";
+const SW_CACHE_REVISION = "vault-ui-46";
 const SW_VERSION = `xpense-pwa-${SW_BUILD}-${SW_CACHE_REVISION}`;
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const DYNAMIC_CACHE = `${SW_VERSION}-dynamic`;
@@ -43,6 +43,7 @@ const APP_SHELL = [
   "/js/pwa.js?v=1.1.7",
   "/assets/hehehe.png",
   "/assets/hero-mockup.png",
+  "/assets/qr/xpense-share-qr.png",
   "/assets/icons/icon-192.png",
   "/assets/icons/icon-512.png",
   "/assets/icons/apple-touch-icon.png",
