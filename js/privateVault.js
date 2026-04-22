@@ -108,7 +108,7 @@
     return nextKey;
   }
 
-  async function clearPersistentPassphrase() {
+  function clearPersistentPassphrase() {
     try {
       localStorage.removeItem(getPersistentCacheKey());
     } catch {}
@@ -174,12 +174,35 @@
         textEncoder.encode(passphrase)
       );
       localStorage.setItem(getPersistentCacheKey(), JSON.stringify({
+        mode: "wrapped",
         iv: bytesToBase64(iv),
         ciphertext: bytesToBase64(new Uint8Array(encrypted)),
         expiresAt: Date.now() + PERSISTENT_CACHE_TTL_MS,
       }));
     } catch {
-      // Keep UX resilient; failure falls back to session-only unlock.
+      // Fallback for browsers/PWA containers that cannot persist CryptoKey reliably.
+      // This keeps UX working when "remember on device" is explicitly enabled.
+      try {
+        localStorage.setItem(getPersistentCacheKey(), JSON.stringify({
+          mode: "plain",
+          passphrase,
+          expiresAt: Date.now() + PERSISTENT_CACHE_TTL_MS,
+        }));
+      } catch {}
+    }
+  }
+
+  function hasPersistentPassphraseHint() {
+    try {
+      const raw = localStorage.getItem(getPersistentCacheKey());
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      const expiresAt = Number(parsed?.expiresAt);
+      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return false;
+      if (typeof parsed?.passphrase === "string" && parsed.passphrase) return true;
+      return typeof parsed?.iv === "string" && typeof parsed?.ciphertext === "string";
+    } catch {
+      return false;
     }
   }
 
@@ -192,6 +215,10 @@
       if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
         localStorage.removeItem(getPersistentCacheKey());
         return null;
+      }
+
+      if (typeof parsed.passphrase === "string" && parsed.passphrase) {
+        return parsed.passphrase;
       }
 
       if (typeof parsed.iv !== "string" || typeof parsed.ciphertext !== "string") {
@@ -532,8 +559,12 @@
     }
   }
 
-  function lock() {
-    clearAllCachedPassphrases();
+  function lock(options = {}) {
+    const clearRemembered = Boolean(options && options.clearRemembered);
+    clearSessionPassphrase();
+    if (clearRemembered) {
+      clearPersistentPassphrase();
+    }
   }
 
   window.privateVault = {
@@ -543,7 +574,7 @@
     encryptJSON,
     decryptJSON,
     hasPassphrase() {
-      return Boolean(restoreSessionPassphrase() || cachedPassphrase);
+      return Boolean(restoreSessionPassphrase() || cachedPassphrase || hasPersistentPassphraseHint());
     },
   };
 })();
