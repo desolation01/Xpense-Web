@@ -463,17 +463,17 @@ async function main() {
   ];
   const E_WALLET_NAMES = new Set(E_WALLET_OPTIONS);
   const ACCOUNT_LOGO_MAP = {
-    "GCash": "https://commons.wikimedia.org/wiki/Special:Redirect/file/GCash%20logo.svg",
-    "Maya": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Maya%20logo.svg",
-    "GoTyme": "https://commons.wikimedia.org/wiki/Special:Redirect/file/GoTyme%20Bank%20logo.svg",
-    "BDO": "https://commons.wikimedia.org/wiki/Special:Redirect/file/BDO%20Unibank%20%28logo%29.svg",
-    "BPI": "https://files.brandlogos.net/svg/p9rFMhuYOp/bpi-logo-brandlogos.net_55rv03izx.svg",
-    "MetroBank": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Metropolitan%20Bank%20and%20Trust%20Company.svg",
-    "Landbank": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Landbank%20New.svg",
-    "MariBank": "https://files.brandlogos.net/svg/a9r8rO8ne5/MariBank-logo_brandlogos.net_ab9319.svg",
-    "UnionBank": "https://commons.wikimedia.org/wiki/Special:Redirect/file/UnionBank%20PH%20logo.svg",
-    "Security Bank": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Security%20Bank%20logo.svg",
-    "EastWest Bank": "https://commons.wikimedia.org/wiki/Special:Redirect/file/EastWest%20Bank%202011%20h-pos%20logo.svg",
+    "GCash": "/assets/icons/accounts/gcash.svg",
+    "Maya": "/assets/icons/accounts/maya.svg",
+    "GoTyme": "/assets/icons/accounts/gotyme.svg",
+    "BDO": "/assets/icons/accounts/bdo.svg",
+    "BPI": "/assets/icons/accounts/bpi.svg",
+    "MetroBank": "/assets/icons/accounts/metrobank.svg",
+    "Landbank": "/assets/icons/accounts/landbank.svg",
+    "MariBank": "/assets/icons/accounts/maribank.svg",
+    "UnionBank": "/assets/icons/accounts/unionbank.svg",
+    "Security Bank": "/assets/icons/accounts/security-bank.svg",
+    "EastWest Bank": "/assets/icons/accounts/eastwest-bank.svg",
   };
   const ACCOUNT_THEME_CLASS_MAP = {
     "GCash": "account-theme-gcash",
@@ -2180,7 +2180,6 @@ async function main() {
           ${ACCOUNT_LOGO_MAP[account.name]
             ? `<img class="account-row-brand" src="${ACCOUNT_LOGO_MAP[account.name]}" alt="${escapeHtml(account.name)} logo" />`
             : `<p class="account-row-name">${escapeHtml(account.name)}</p>`}
-          ${ACCOUNT_LOGO_MAP[account.name] ? `<p class="account-row-name">${escapeHtml(account.name)}</p>` : ""}
           ${account.label ? `<p class="account-row-label">${escapeHtml(account.label)}</p>` : ""}
         </div>
         <div class="account-row-balance">${fmtMoney(account.balance)}</div>
