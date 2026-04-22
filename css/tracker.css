@@ -1,5 +1,5 @@
 /* ============================================
-   EXPENSE TRACKER STYLES �?C2 Hero Banner
+   EXPENSE TRACKER STYLES �?C2 Hero Banner
    Dark OLED · Developer Palette
    ============================================ */
 
@@ -25,7 +25,7 @@
 /* ── Tracker Nav Override ──
    The main styles.css hides .site-nav below 64rem.
    The tracker page uses its own nav toggle, so we show
-   the secondary nav on �?860px and hide it below that
+   the secondary nav on �?860px and hide it below that
    (the JS toggle adds .is-open to reveal it on mobile). */
 @media (min-width: 860px) {
   .site-nav[aria-label="Secondary"] {
@@ -1767,8 +1767,8 @@
 
 /* ── Brand Logo ── */
 .brand-logo-large {
-  width: 48px;
-  height: 48px;
+  width: 68px;
+  height: 68px;
   object-fit: contain;
   border-radius: var(--radius-md);
   display: block;
@@ -2196,7 +2196,7 @@
   }
 }
 
-/* ── Left Column (Calendar �?Chart �?Summary) ── */
+/* ── Left Column (Calendar �?Chart �?Summary) ── */
 .tracker-left-col {
   display: flex;
   flex-direction: column;
@@ -2210,9 +2210,9 @@
   gap: var(--sp-4);
 }
 
-/* ══════════════════════════════════════════════�?   RESPONSIVE �?Mobile-first overrides
+/* ══════════════════════════════════════════════�?   RESPONSIVE �?Mobile-first overrides
    Breakpoints: 960 · 768 · 640 · 480 · 360
-   ══════════════════════════════════════════════�?*/
+   ══════════════════════════════════════════════�?*/
 
 /* ── Hero Row Wrapper ── */
 .tracker-hero-row {
@@ -2232,7 +2232,7 @@
   min-width: 0;
 }
 
-/* ════════════ �?960px ════════════ */
+/* ════════════ �?960px ════════════ */
 @media (max-width: 960px) {
   .tracker-hero {
     width: 100%;
@@ -2265,9 +2265,9 @@
   }
 }
 
-/* ════════════ �?768px ════════════ */
+/* ════════════ �?768px ════════════ */
 @media (max-width: 768px) {
-  /* Mini stats �?2 columns */
+  /* Mini stats �?2 columns */
   .tracker-mini-stats {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -2302,7 +2302,7 @@
     font-size: 2rem;
   }
 
-  /* Entry form rows �?single column */
+  /* Entry form rows �?single column */
   .tracker-entry-row {
     grid-template-columns: 1fr;
   }
@@ -2314,7 +2314,7 @@
   }
 }
 
-/* ════════════ �?640px ════════════ */
+/* ════════════ �?640px ════════════ */
 @media (max-width: 640px) {
   /* Hero banner: stack vertically */
   .tracker-hero {
@@ -2371,7 +2371,7 @@
     font-size: var(--text-xs);
   }
 
-  /* Side cards �?stack */
+  /* Side cards �?stack */
   .tracker-side-cards {
     flex-direction: column;
   }
@@ -2577,7 +2577,7 @@
   }
 }
 
-/* ════════════ �?480px ════════════ */
+/* ════════════ �?480px ════════════ */
 @media (max-width: 480px) {
   /* Mini stat text sizes */
   .tracker-mini-label {
@@ -2634,9 +2634,9 @@
   }
 }
 
-/* ════════════ �?360px ════════════ */
+/* ════════════ �?360px ════════════ */
 @media (max-width: 360px) {
-  /* Smallest phones �?ultra compact */
+  /* Smallest phones �?ultra compact */
   .tracker-day {
     min-height: 40px;
     padding: 2px;
