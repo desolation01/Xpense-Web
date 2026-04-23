@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 
 <head>
@@ -19,11 +19,11 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet" media="print" onload="this.media='all'" />
-  <link rel="preload" href="/css/tracker.css?v=2.3.6" as="style" />
-  <link rel="preload" href="/js/tracker.js?v=1.4.29" as="script" />
+  <link rel="preload" href="/css/tracker.css?v=2.4.3" as="style" />
+  <link rel="preload" href="/js/tracker.js?v=1.4.33" as="script" />
   <link rel="stylesheet" href="/css/tokens.css" />
-  <link rel="stylesheet" href="/css/styles.css?v=2.0.7" />
-  <link rel="stylesheet" href="/css/tracker.css?v=2.3.6" />
+  <link rel="stylesheet" href="/css/styles.css?v=2.1.0" />
+  <link rel="stylesheet" href="/css/tracker.css?v=2.4.3" />
   <link rel="stylesheet" href="/css/pwa.css" />
   <style>
     .tracker-hero .edit-budget-btn::before {
@@ -256,10 +256,10 @@
       display: flex;
       align-items: stretch;
       justify-content: stretch;
-      min-height: 136px;
+      min-height: 116px;
     }
 
-    .accounts-launch-btn {
+    .accounts-launch-card-shell {
       width: 100%;
       border: 1px solid rgba(56, 189, 248, 0.18);
       border-radius: var(--radius-lg);
@@ -269,15 +269,42 @@
       color: var(--color-background-foreground);
       display: grid;
       gap: var(--sp-3);
-      padding: var(--sp-4);
+      padding: var(--sp-3) var(--sp-4);
       text-align: left;
+      transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+    }
+
+    .accounts-launch-card:hover .accounts-launch-card-shell {
+      border-color: rgba(56, 189, 248, 0.32);
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+    }
+
+    .accounts-launch-btn {
+      width: 100%;
+      min-height: 2.45rem;
+      border-radius: 14px;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      background: linear-gradient(180deg, rgba(33, 49, 86, 0.95), rgba(25, 39, 70, 0.95));
+      color: #78a8ff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
-      transition: transform var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      transition: transform var(--duration-fast) var(--ease-standard),
+        border-color var(--duration-fast) var(--ease-standard),
+        background var(--duration-fast) var(--ease-standard),
+        color var(--duration-fast) var(--ease-standard);
     }
 
     .accounts-launch-btn:hover {
       transform: translateY(-1px);
-      border-color: rgba(56, 189, 248, 0.32);
+      border-color: rgba(96, 165, 250, 0.52);
+      background: linear-gradient(180deg, rgba(39, 60, 104, 0.98), rgba(28, 47, 86, 0.98));
+      color: #a8c7ff;
     }
 
     .accounts-launch-btn:focus-visible {
@@ -289,7 +316,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--sp-3);
+      gap: var(--sp-2);
     }
 
     .accounts-launch-kicker {
@@ -325,7 +352,11 @@
       margin: 0;
       color: var(--color-muted-foreground);
       font-size: var(--text-sm);
-      line-height: 1.6;
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     .accounts-total-inline {
@@ -597,12 +628,25 @@
       font-size: 1rem;
     }
 
-    [data-theme="light"] .accounts-launch-btn {
+    [data-theme="light"] .accounts-launch-card-shell {
       background:
         radial-gradient(circle at top right, rgba(56, 189, 248, 0.1), transparent 45%),
         linear-gradient(180deg, #e8f4fd, #ddeef8);
       border-color: rgba(56, 189, 248, 0.35);
       color: #0f172a;
+    }
+
+    [data-theme="light"] .accounts-launch-btn {
+      border-color: rgba(37, 99, 235, 0.22);
+      background: linear-gradient(180deg, rgba(230, 240, 255, 0.98), rgba(220, 233, 251, 0.98));
+      color: #2563eb;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    }
+
+    [data-theme="light"] .accounts-launch-btn:hover {
+      border-color: rgba(37, 99, 235, 0.38);
+      background: linear-gradient(180deg, rgba(221, 235, 255, 1), rgba(208, 226, 250, 1));
+      color: #1d4ed8;
     }
 
     [data-theme="light"] .accounts-launch-kicker {
@@ -756,7 +800,7 @@
             <!-- Main Layout Container for Calendar and Stats -->
             <div class="tracker-main-layout" id="trackerMainLayout" hidden>
 
-             
+              <div class="tracker-top-summary" id="trackerTopSummary">
               <div class="tracker-hero-row">
                 <div class="tracker-hero" id="trackerHero" style="margin-bottom: 0;" data-hero-card="summary">
                   <button class="hero-privacy-btn" type="button" id="heroPrivacyToggle" aria-label="Hide hero summary values" title="Hide values">
@@ -797,7 +841,7 @@
                 
                 <div class="tracker-side-cards">
                   <div class="accounts-launch-card">
-                    <button class="accounts-launch-btn" type="button" id="accountsOpenBtn">
+                    <div class="accounts-launch-card-shell">
                       <div class="accounts-launch-top">
                         <span class="accounts-launch-kicker">Funds Hub</span>
                         <span class="accounts-launch-count" id="accountsCountBadge">0</span>
@@ -806,11 +850,12 @@
                         <p class="accounts-launch-title">Banks and E-Wallets</p>
                         <p class="accounts-launch-sub">View every account in one place, then add or remove wallets and banks at the bottom.</p>
                       </div>
+                      <button class="accounts-launch-btn" type="button" id="accountsOpenBtn" data-open-accounts>Manage Accounts</button>
                       <!-- <div class="accounts-total-inline" id="accountsLaunchTotal">闂?.00</div> -->
-                    </button>
+                    </div>
                   </div>
                   <div
-                    style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-4); background: rgba(255,255,255,0.03); border: 1px solid var(--color-border); border-radius: var(--radius-lg);">
+                    style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); background: rgba(255,255,255,0.03); border: 1px solid var(--color-border); border-radius: var(--radius-lg);">
                     
                     <div
                       style="font-size: 0.75rem; color: var(--color-muted-foreground); font-weight: 600; white-space: nowrap;">
@@ -931,6 +976,7 @@
                     <p class="tracker-mini-val" id="totalSpentDisplay" data-maskable>闂?.00</p>
                   </div>
                 </div>
+              </div>
               </div>
 
               <div class="tracker-body">
@@ -1133,6 +1179,11 @@
         <div class="tracker-entry-list" id="entryList" aria-label="Entries"></div>
 
         <form class="tracker-entry-form" id="entryForm">
+          <label class="field">
+            <span class="field-label">Date</span>
+            <input class="field-input" id="entryDateInput" type="date" />
+          </label>
+
           <div class="tracker-entry-row">
             <label class="field">
               <span class="field-label">Type</span>
@@ -1353,6 +1404,69 @@
     </section>
   </div>
 
+  <div class="tracker-modal mobile-section-modal" id="mobileSectionModal" aria-hidden="true">
+    <div class="tracker-modal-backdrop" data-close-mobile-section="true"></div>
+    <section class="tracker-modal-panel mobile-section-modal-panel" role="dialog" aria-modal="true" aria-labelledby="mobileSectionModalTitle" aria-describedby="mobileSectionModalDescription">
+      <header class="tracker-modal-head">
+        <div>
+          <p class="tracker-modal-title" id="mobileSectionModalTitle">Section</p>
+          <p class="tracker-modal-sub" id="mobileSectionModalDescription">Open a focused view for this section.</p>
+        </div>
+        <button class="tracker-modal-close" type="button" aria-label="Close section window" data-close-mobile-section="true">&times;</button>
+      </header>
+      <div class="tracker-modal-body mobile-section-modal-body">
+        <div class="mobile-section-modal-slot" id="mobileSectionModalSlot"></div>
+      </div>
+    </section>
+  </div>
+
+  <nav class="mobile-bottom-nav" aria-label="Quick actions">
+    <button class="mobile-bottom-nav-btn is-active" type="button" data-mobile-nav-target="dashboard">
+      <span class="mobile-bottom-nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-5.5h-5V21H5a1 1 0 0 1-1-1v-9.5Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" />
+        </svg>
+      </span>
+      <span class="mobile-bottom-nav-label">Calendar</span>
+    </button>
+    <button class="mobile-bottom-nav-btn" type="button" data-mobile-nav-target="transactions">
+      <span class="mobile-bottom-nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          <path d="M6 15.5 10 11l3 2.5 5-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="m16.5 7.5 1.5 0 .2 1.7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </span>
+      <span class="mobile-bottom-nav-label">Graphs</span>
+    </button>
+    <button class="mobile-bottom-nav-btn mobile-bottom-nav-btn-center" type="button" data-mobile-nav-action="add-entry" aria-label="Add entry">
+      <span class="mobile-bottom-nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+        </svg>
+      </span>
+    </button>
+    <button class="mobile-bottom-nav-btn" type="button" data-mobile-nav-target="budgets">
+      <span class="mobile-bottom-nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.9" />
+          <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </span>
+      <span class="mobile-bottom-nav-label">Budgets</span>
+    </button>
+    <button class="mobile-bottom-nav-btn" type="button" data-open-accounts>
+      <span class="mobile-bottom-nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.9" />
+          <path d="M3 10h18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+          <circle cx="16.5" cy="14.5" r="1.2" fill="currentColor" />
+        </svg>
+      </span>
+      <span class="mobile-bottom-nav-label">Accounts</span>
+    </button>
+  </nav>
+
   <div class="chatbot">
     <div class="active-users-indicator" id="activeUsersIndicator" aria-live="polite" hidden>
       <span class="active-users-icon" aria-hidden="true">
@@ -1397,12 +1511,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
-  <script src="/js/localDataStore.js?v=1.0.6" defer></script>
-  <script src="/js/privateVault.js?v=1.0.26" defer></script>
-  <script src="/js/tracker.js?v=1.4.29" defer></script>
-  <script src="/js/pwa.js?v=1.1.7" defer></script>
+  <script src="/js/localDataStore.js?v=1.0.9" defer></script>
+  <script src="/js/privateVault.js?v=1.0.29" defer></script>
+  <script src="/js/tracker.js?v=1.4.33" defer></script>
+  <script src="/js/pwa.js?v=1.2.0" defer></script>
   <script>
-    // 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?Theme Toggle 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?
+    // 闂傚倸鍊搁崐鎼佸磹妞嬪海鐭嗗〒姘ｅ亾鐎规洦鍨跺畷绋课旈埀顒勫磼閵婏妇绡€濠电姴鍊绘晶鏇犵棯閹岀吋闁哄瞼鍠栧畷婊嗩槾閻㈩垱鐩弻锝夊箻閸愬弶娈婚梺鍝勬湰缁嬫牜绮诲☉銏犵闁告劏鏁╅敂鐣岀?Theme Toggle 闂傚倸鍊搁崐鎼佸磹妞嬪海鐭嗗〒姘ｅ亾鐎规洦鍨跺畷绋课旈埀顒勫磼閵婏妇绡€濠电姴鍊绘晶鏇犵棯閹岀吋闁哄瞼鍠栧畷婊嗩槾閻㈩垱鐩弻锝夊箻閸愬弶娈婚梺鍝勬湰缁嬫牜绮诲☉銏犵闁告劏鏁╅敂鐣岀?
     (function () {
       var btn = document.getElementById('themeToggleBtn');
       var html = document.documentElement;
@@ -1439,3 +1553,4 @@
 </body>
 
 </html>
+

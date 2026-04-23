@@ -246,7 +246,9 @@ async function main() {
   const activeUsersCount = document.getElementById("activeUsersCount");
   const miniPrivacyButtons = Array.from(document.querySelectorAll("[data-mini-privacy-toggle]"));
   const heroPrivacyToggle = document.getElementById("heroPrivacyToggle");
-  const accountsOpenBtn = document.getElementById("accountsOpenBtn");
+  const accountsOpenButtons = Array.from(document.querySelectorAll("[data-open-accounts]"));
+  const mobileNavTargetButtons = Array.from(document.querySelectorAll("[data-mobile-nav-target]"));
+  const mobileNavActionButtons = Array.from(document.querySelectorAll("[data-mobile-nav-action]"));
   const accountsLaunchTotal = document.getElementById("accountsLaunchTotal");
   const accountsCountBadge = document.getElementById("accountsCountBadge");
   
@@ -272,6 +274,8 @@ async function main() {
   const navRemainingDisplay = document.getElementById("navRemainingDisplay");
   const trackerMain = document.getElementById("trackerMain");
   const trackerMainLayout = document.getElementById("trackerMainLayout");
+  const trackerTopSummary = document.getElementById("trackerTopSummary");
+  const trackerMiniStats = document.querySelector(".tracker-mini-stats");
   const activeMonthBadge = document.getElementById("activeMonthBadge");
   const savingsRateVal = document.getElementById("savingsRateVal");
   
@@ -416,6 +420,7 @@ async function main() {
   const modalDaySummary = document.getElementById("modalDaySummary");
   const entryList = document.getElementById("entryList");
   const entryForm = document.getElementById("entryForm");
+  const entryDateInput = document.getElementById("entryDateInput");
   const entryType = document.getElementById("entryType");
   const entryAmount = document.getElementById("entryAmount");
   const entryLabel = document.getElementById("entryLabel");
@@ -439,6 +444,10 @@ async function main() {
   const clearConfirmBtn = document.getElementById("clearConfirmBtn");
   const clearCancelBtn = document.getElementById("clearCancelBtn");
   const accountsModal = document.getElementById("accountsModal");
+  const mobileSectionModal = document.getElementById("mobileSectionModal");
+  const mobileSectionModalTitle = document.getElementById("mobileSectionModalTitle");
+  const mobileSectionModalDescription = document.getElementById("mobileSectionModalDescription");
+  const mobileSectionModalSlot = document.getElementById("mobileSectionModalSlot");
   const accountsList = document.getElementById("accountsList");
   const accountsModalTotal = document.getElementById("accountsModalTotal");
   const accountsForm = document.getElementById("accountsForm");
@@ -489,6 +498,8 @@ async function main() {
     "EastWest Bank": "account-theme-eastwest-bank",
   };
   let editingAccountId = "";
+  let activeMobileSectionKey = "";
+  let restoreMobileSectionTarget = null;
 
   function resetAccountEditor() {
     editingAccountId = "";
@@ -2222,11 +2233,124 @@ async function main() {
     });
   }
 
-  if (accountsOpenBtn && accountsModal) {
-    accountsOpenBtn.addEventListener("click", () => {
-      resetAccountEditor();
-      renderAccountsModal();
-      accountsModal.classList.add("is-open");
+  if (accountsOpenButtons.length && accountsModal) {
+    accountsOpenButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        resetAccountEditor();
+        renderAccountsModal();
+        accountsModal.classList.add("is-open");
+      });
+    });
+  }
+
+  if (mobileNavTargetButtons.length) {
+    const navTargetMap = {
+      dashboard: {
+        title: "Calendar",
+        description: "Browse your month and tap any day to review or add entries.",
+        element: calendarCard || trackerMainLayout || trackerMain,
+      },
+      transactions: {
+        title: "Graphs",
+        description: "Review your category split and monthly spending trends.",
+        element: chartCard,
+      },
+      budgets: {
+        title: "Budgets",
+        description: "See your remaining totals, weekly pace, and budget summaries in one place.",
+        element: trackerTopSummary || trackerMainLayout || trackerMain,
+      },
+    };
+
+    const closeMobileSectionModal = () => {
+      if (!mobileSectionModal) return;
+
+      if (restoreMobileSectionTarget) {
+        restoreMobileSectionTarget();
+        restoreMobileSectionTarget = null;
+      }
+
+      activeMobileSectionKey = "";
+      mobileSectionModal.classList.remove("is-open");
+      mobileSectionModal.setAttribute("aria-hidden", "true");
+      if (mobileSectionModalSlot) {
+        mobileSectionModalSlot.innerHTML = "";
+      }
+    };
+
+    const openMobileSectionModal = (sectionKey) => {
+      if (!mobileSectionModal || !mobileSectionModalSlot) return;
+      const config = navTargetMap[sectionKey];
+      const element = config?.element;
+      if (!config || !element || !element.parentNode) return;
+
+      closeMobileSectionModal();
+
+      const placeholder = document.createElement("div");
+      placeholder.hidden = true;
+      placeholder.setAttribute("data-mobile-section-placeholder", sectionKey);
+      element.parentNode.insertBefore(placeholder, element);
+
+      mobileSectionModalTitle.textContent = config.title;
+      if (mobileSectionModalDescription) {
+        mobileSectionModalDescription.textContent = config.description;
+      }
+      mobileSectionModalSlot.appendChild(element);
+      mobileSectionModal.classList.add("is-open");
+      mobileSectionModal.setAttribute("aria-hidden", "false");
+      activeMobileSectionKey = sectionKey;
+
+      restoreMobileSectionTarget = () => {
+        if (placeholder.parentNode) {
+          placeholder.parentNode.replaceChild(element, placeholder);
+        }
+        if (activeMobileSectionKey === "transactions" && chart) {
+          window.setTimeout(() => chart.resize(), 50);
+        }
+      };
+
+      if (sectionKey === "transactions" && chart) {
+        window.setTimeout(() => chart.resize(), 50);
+      }
+    };
+
+    mobileNavTargetButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetKey = button.getAttribute("data-mobile-nav-target");
+        if (!navTargetMap[targetKey]) return;
+
+        mobileNavTargetButtons.forEach((item) => item.classList.remove("is-active"));
+        button.classList.add("is-active");
+        openMobileSectionModal(targetKey);
+      });
+    });
+
+    document.querySelectorAll("[data-close-mobile-section]").forEach((element) => {
+      element.addEventListener("click", closeMobileSectionModal);
+    });
+  }
+
+  if (mobileNavActionButtons.length) {
+    mobileNavActionButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const action = button.getAttribute("data-mobile-nav-action");
+        if (action !== "add-entry") return;
+        if (!entryModal || !entryAmount) return;
+
+        activeDateIso = isoDate(new Date());
+        renderEntriesModal(activeDateIso);
+        entryModal.classList.add("is-open");
+        if (entryDateInput) {
+          entryDateInput.focus();
+          if (typeof entryDateInput.showPicker === "function") {
+            try {
+              entryDateInput.showPicker();
+            } catch {}
+          }
+        } else {
+          entryAmount.focus();
+        }
+      });
     });
   }
 
@@ -2611,6 +2735,7 @@ async function main() {
 
   function renderEntriesModal(dateIso) {
     modalDateTitle.textContent = `Entries for ${dateIso}`;
+    if (entryDateInput) entryDateInput.value = dateIso;
     const items = entriesByDay[dateIso] || [];
     modalDaySummary.textContent = `Total Net: ${fmtMoney(items.reduce((acc, it) => acc + (it.type === "gain" ? it.amount : -it.amount), 0))}`;
     entryList.innerHTML = "";
@@ -2628,6 +2753,16 @@ async function main() {
         </div>
       `;
       entryList.appendChild(row);
+    });
+  }
+
+  if (entryDateInput) {
+    entryDateInput.addEventListener("change", () => {
+      const nextIso = String(entryDateInput.value || "").trim();
+      if (!nextIso) return;
+      activeDateIso = nextIso;
+      renderEntriesModal(activeDateIso);
+      entryAmount?.focus();
     });
   }
 
