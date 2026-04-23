@@ -942,6 +942,8 @@ async function main() {
 
       const response = await fetch("/api/api?action=sync", {
         method: "POST",
+        keepalive: true,
+        cache: "no-store",
         headers: {
           "Content-Type": "application/json",
           "X-CSRF-Token": token,

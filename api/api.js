@@ -392,13 +392,15 @@ function normalizeEncryptedSyncPayload(payload) {
   }
 
   const rawEntriesCount = payload && payload.entriesCount;
-  let entriesCount = 0;
+  let entriesCount = null;
+  let entriesCountProvided = false;
   if (rawEntriesCount !== undefined && rawEntriesCount !== null && rawEntriesCount !== '') {
     const parsedCount = Number(rawEntriesCount);
     if (!Number.isFinite(parsedCount) || parsedCount < 0 || parsedCount > 1_000_000) {
       throw new Error('Invalid encrypted entries count.');
     }
     entriesCount = Math.floor(parsedCount);
+    entriesCountProvided = true;
   }
 
   return {
@@ -410,7 +412,22 @@ function normalizeEncryptedSyncPayload(payload) {
     iv: encryptedState.iv,
     ciphertext: encryptedState.ciphertext,
     entriesCount,
+    entriesCountProvided,
   };
+}
+
+function getEncryptedEntriesCountFromRow(row) {
+  const directCount = Number(row?.entries_count);
+  if (Number.isFinite(directCount) && directCount >= 0) {
+    return Math.floor(directCount);
+  }
+
+  const nestedCount = Number(row?.encrypted_payload?.entriesCount);
+  if (Number.isFinite(nestedCount) && nestedCount >= 0) {
+    return Math.floor(nestedCount);
+  }
+
+  return 0;
 }
 
 // CORS headers
@@ -541,6 +558,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'public_stats') {
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
       const { count: userCount } = await getSupabase()
         .from('users')
         .select('*', { count: 'exact', head: true });
@@ -562,12 +580,27 @@ module.exports = async (req, res) => {
       const totalExpenses = expenseData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
       const totalGains = gainData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
       let encryptedEntryCount = 0;
-      const { data: encryptedMetaRows, error: encryptedMetaError } = await getSupabase()
+      let encryptedMetaRows = null;
+
+      const encryptedMetaQuery = await getSupabase()
         .from('private_sync_state')
-        .select('entries_count');
-      if (!encryptedMetaError && Array.isArray(encryptedMetaRows)) {
+        .select('entries_count, encrypted_payload');
+
+      if (!encryptedMetaQuery.error && Array.isArray(encryptedMetaQuery.data)) {
+        encryptedMetaRows = encryptedMetaQuery.data;
+      } else {
+        // Backward compatibility: some deployments may not have entries_count yet.
+        const encryptedPayloadOnlyQuery = await getSupabase()
+          .from('private_sync_state')
+          .select('encrypted_payload');
+        if (!encryptedPayloadOnlyQuery.error && Array.isArray(encryptedPayloadOnlyQuery.data)) {
+          encryptedMetaRows = encryptedPayloadOnlyQuery.data;
+        }
+      }
+
+      if (Array.isArray(encryptedMetaRows)) {
         encryptedEntryCount = encryptedMetaRows.reduce(
-          (sum, row) => sum + (Number(row?.entries_count) || 0),
+          (sum, row) => sum + getEncryptedEntriesCountFromRow(row),
           0
         );
       }
@@ -674,13 +707,31 @@ module.exports = async (req, res) => {
 
         try {
           if (encryptedPayload) {
+            let effectiveEntriesCount = 0;
+            if (encryptedPayload.entriesCountProvided) {
+              effectiveEntriesCount = Number(encryptedPayload.entriesCount) || 0;
+            } else {
+              const { data: previousEncryptedRow } = await getSupabase()
+                .from('private_sync_state')
+                .select('entries_count, encrypted_payload')
+                .eq('user_id', userId)
+                .maybeSingle();
+              effectiveEntriesCount = getEncryptedEntriesCountFromRow(previousEncryptedRow);
+            }
+
+            const payloadForStorage = {
+              ...encryptedPayload,
+              entriesCount: effectiveEntriesCount
+            };
+            delete payloadForStorage.entriesCountProvided;
+
             let { error: encryptedSaveError } = await getSupabase()
               .from('private_sync_state')
               .upsert({
                 user_id: userId,
-                encrypted_payload: encryptedPayload,
-                encryption_version: encryptedPayload.version,
-                entries_count: encryptedPayload.entriesCount,
+                encrypted_payload: payloadForStorage,
+                encryption_version: payloadForStorage.version,
+                entries_count: effectiveEntriesCount,
                 updated_at: new Date().toISOString()
               }, {
                 onConflict: 'user_id'
@@ -691,8 +742,8 @@ module.exports = async (req, res) => {
                 .from('private_sync_state')
                 .upsert({
                   user_id: userId,
-                  encrypted_payload: encryptedPayload,
-                  encryption_version: encryptedPayload.version,
+                  encrypted_payload: payloadForStorage,
+                  encryption_version: payloadForStorage.version,
                   updated_at: new Date().toISOString()
                 }, {
                   onConflict: 'user_id'

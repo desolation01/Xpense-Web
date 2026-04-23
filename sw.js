@@ -1,6 +1,6 @@
 const swUrl = new URL(self.location.href);
 const SW_BUILD = swUrl.searchParams.get("build") || "dev";
-const SW_CACHE_REVISION = "vault-ui-46";
+const SW_CACHE_REVISION = "vault-ui-47";
 const SW_VERSION = `xpense-pwa-${SW_BUILD}-${SW_CACHE_REVISION}`;
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const DYNAMIC_CACHE = `${SW_VERSION}-dynamic`;
@@ -88,6 +88,15 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (request.method !== "GET" || !url.protocol.startsWith("http")) {
+    return;
+  }
+
+  if (
+    url.origin === self.location.origin &&
+    url.pathname === "/api/api" &&
+    url.searchParams.get("action") === "public_stats"
+  ) {
+    event.respondWith(fetch(request, { cache: "no-store" }));
     return;
   }
 
