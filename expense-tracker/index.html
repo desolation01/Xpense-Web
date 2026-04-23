@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 
 <head>
@@ -19,11 +19,11 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet" media="print" onload="this.media='all'" />
-  <link rel="preload" href="/css/tracker.css?v=2.4.3" as="style" />
-  <link rel="preload" href="/js/tracker.js?v=1.4.33" as="script" />
+  <link rel="preload" href="/css/tracker.css?v=2.4.4" as="style" />
+  <link rel="preload" href="/js/tracker.js?v=1.4.34" as="script" />
   <link rel="stylesheet" href="/css/tokens.css" />
-  <link rel="stylesheet" href="/css/styles.css?v=2.1.0" />
-  <link rel="stylesheet" href="/css/tracker.css?v=2.4.3" />
+  <link rel="stylesheet" href="/css/styles.css?v=2.1.1" />
+  <link rel="stylesheet" href="/css/tracker.css?v=2.4.4" />
   <link rel="stylesheet" href="/css/pwa.css" />
   <style>
     .tracker-hero .edit-budget-btn::before {
@@ -682,7 +682,8 @@
 
     body.vault-locked #trackerHeader,
     body.vault-locked #trackerMain,
-    body.vault-locked .chatbot {
+    body.vault-locked .chatbot,
+    body.vault-locked .mobile-bottom-nav {
       visibility: hidden;
       pointer-events: none;
       user-select: none;
@@ -815,22 +816,22 @@
                   </button>
                   <div class="tracker-hero-left">
                     <p class="tracker-hero-label">Total Remaining</p>
-                    <p class="tracker-hero-amount" id="remainingDisplay" data-hero-maskable>闂?.00</p>
+                    <p class="tracker-hero-amount" id="remainingDisplay" data-hero-maskable>�?.00</p>
                   </div>
                   <div class="tracker-hero-right">
                     <div class="tracker-hero-stat">
                       <p class="tracker-hero-stat-label" style="text-transform: uppercase;">Spent this month</p>
-                      <p class="tracker-hero-stat-val" id="monthExpDisplayHero" data-hero-maskable>闂?.00</p>
+                      <p class="tracker-hero-stat-val" id="monthExpDisplayHero" data-hero-maskable>�?.00</p>
                     </div>
                     <div class="tracker-hero-divider"></div>
                     <div class="tracker-hero-stat">
                       <p class="tracker-hero-stat-label" style="text-transform: uppercase;">Spent this week</p>
-                      <p class="tracker-hero-stat-val" id="weekExpDisplayHero" data-hero-maskable>闂?.00</p>
+                      <p class="tracker-hero-stat-val" id="weekExpDisplayHero" data-hero-maskable>�?.00</p>
                     </div>
                     <div class="tracker-hero-divider"></div>
                     <!-- <div class="tracker-hero-stat">
                       <p class="tracker-hero-stat-label">Accounts Total</p>
-                      <p class="tracker-hero-stat-val" id="accountsTotalDisplay" data-hero-maskable>闂?.00</p>
+                      <p class="tracker-hero-stat-val" id="accountsTotalDisplay" data-hero-maskable>�?.00</p>
                       <p class="tracker-hero-stat-delta">Wallets and bank balances</p>
                     </div> -->
                     <button class="btn btn-small btn-ghost edit-budget-btn" id="editBudgetBtn"
@@ -851,7 +852,7 @@
                         <p class="accounts-launch-sub">View every account in one place, then add or remove wallets and banks at the bottom.</p>
                       </div>
                       <button class="accounts-launch-btn" type="button" id="accountsOpenBtn" data-open-accounts>Manage Accounts</button>
-                      <!-- <div class="accounts-total-inline" id="accountsLaunchTotal">闂?.00</div> -->
+                      <!-- <div class="accounts-total-inline" id="accountsLaunchTotal">�?.00</div> -->
                     </div>
                   </div>
                   <div
@@ -903,14 +904,14 @@
                   </div>
                   <div style="flex: 1; min-width: 0;">
                     <p class="tracker-mini-label">MONTHLY BUDGET REMAINING</p>
-                    <p class="tracker-mini-val tracker-mini-val--green" id="savingsDisplay" data-maskable>闂?.00</p>
+                    <p class="tracker-mini-val tracker-mini-val--green" id="savingsDisplay" data-maskable>�?.00</p>
                     <div style="margin-top: 0.5rem;">
                       <div class="tracker-hero-bar-wrap">
                         <div class="tracker-hero-bar-bg" style="height: 4px;">
                           <div class="tracker-hero-bar-fill" id="heroBudgetBar" style="width:0%"></div>
                         </div>
                         <div class="tracker-hero-bar-labels" style="font-size: 0.65rem; padding-top: 0.25rem;">
-                          <span id="heroSpentLabel" data-maskable>闂?.00 spent</span>
+                          <span id="heroSpentLabel" data-maskable>�?.00 spent</span>
                           <span id="heroPctLabel" data-maskable>0% used</span>
                         </div>
                       </div>
@@ -939,7 +940,7 @@
                   </div>
                   <div style="flex: 1; min-width: 0;">
                     <p class="tracker-mini-label" style="text-transform: uppercase;">WEEKLY BUDGET REMAINING</p>
-                    <p class="tracker-mini-val" id="weekBudgetMiniDisplay" data-maskable>闂?.00</p>
+                    <p class="tracker-mini-val" id="weekBudgetMiniDisplay" data-maskable>�?.00</p>
                     <div style="margin-top: 0.5rem;">
                       <div class="tracker-hero-bar-wrap">
                         <div class="tracker-hero-bar-bg" style="height: 4px;">
@@ -947,7 +948,7 @@
                           </div>
                         </div>
                         <div class="tracker-hero-bar-labels" style="font-size: 0.65rem; padding-top: 0.25rem;">
-                          <span id="weekSpentLabel" data-maskable>闂?.00 spent</span>
+                          <span id="weekSpentLabel" data-maskable>�?.00 spent</span>
                           <span id="weekPctLabel" data-maskable>0% used</span>
                         </div>
                       </div>
@@ -973,7 +974,7 @@
                   </div>
                   <div>
                     <p class="tracker-mini-label">Total Spent</p>
-                    <p class="tracker-mini-val" id="totalSpentDisplay" data-maskable>闂?.00</p>
+                    <p class="tracker-mini-val" id="totalSpentDisplay" data-maskable>�?.00</p>
                   </div>
                 </div>
               </div>
@@ -1310,7 +1311,7 @@
         <div class="accounts-footer">
           <div class="accounts-summary-line">
             <span>Total available balance</span>
-            <strong id="accountsModalTotal">闂?.00</strong>
+            <strong id="accountsModalTotal">�?.00</strong>
           </div>
           <form class="tracker-entry-form" id="accountsForm" novalidate>
             <div class="tracker-entry-row">
@@ -1511,12 +1512,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
-  <script src="/js/localDataStore.js?v=1.0.9" defer></script>
-  <script src="/js/privateVault.js?v=1.0.29" defer></script>
-  <script src="/js/tracker.js?v=1.4.33" defer></script>
-  <script src="/js/pwa.js?v=1.2.0" defer></script>
+  <script src="/js/localDataStore.js?v=1.0.10" defer></script>
+  <script src="/js/privateVault.js?v=1.0.30" defer></script>
+  <script src="/js/tracker.js?v=1.4.34" defer></script>
+  <script src="/js/pwa.js?v=1.2.1" defer></script>
   <script>
-    // 闂傚倸鍊搁崐鎼佸磹妞嬪海鐭嗗〒姘ｅ亾鐎规洦鍨跺畷绋课旈埀顒勫磼閵婏妇绡€濠电姴鍊绘晶鏇犵棯閹岀吋闁哄瞼鍠栧畷婊嗩槾閻㈩垱鐩弻锝夊箻閸愬弶娈婚梺鍝勬湰缁嬫牜绮诲☉銏犵闁告劏鏁╅敂鐣岀?Theme Toggle 闂傚倸鍊搁崐鎼佸磹妞嬪海鐭嗗〒姘ｅ亾鐎规洦鍨跺畷绋课旈埀顒勫磼閵婏妇绡€濠电姴鍊绘晶鏇犵棯閹岀吋闁哄瞼鍠栧畷婊嗩槾閻㈩垱鐩弻锝夊箻閸愬弶娈婚梺鍝勬湰缁嬫牜绮诲☉銏犵闁告劏鏁╅敂鐣岀?
+    // 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?Theme Toggle 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?
     (function () {
       var btn = document.getElementById('themeToggleBtn');
       var html = document.documentElement;
@@ -1553,4 +1554,5 @@
 </body>
 
 </html>
+
 
