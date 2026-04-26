@@ -25,6 +25,7 @@
   }
 
   function syncStandaloneClass() {
+    document.body.classList.toggle("is-ios", isIos);
     document.body.classList.toggle("is-standalone", Boolean(isStandaloneMode()));
   }
 
