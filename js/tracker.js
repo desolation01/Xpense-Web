@@ -94,7 +94,7 @@ function createDefaultTrackerState() {
     budget: null,
     weeklyBudget: null,
     entriesByDay: {},
-    setupComplete: false,
+    setupComplete: true,
   };
 }
 
@@ -358,7 +358,7 @@ async function main() {
   let accounts = [];
   let budget = null;
   let weeklyBudget = null;
-  let setupComplete = false;
+  let setupComplete = true;
   let viewDate = new Date();
   viewDate.setDate(1);
   let activeDateIso = null;
@@ -403,7 +403,7 @@ async function main() {
     budget = Number.isFinite(Number(safeState.budget)) ? Number(safeState.budget) : null;
     weeklyBudget = Number.isFinite(Number(safeState.weeklyBudget)) ? Number(safeState.weeklyBudget) : null;
     entriesByDay = normalizeEntriesShape(safeState.entriesByDay);
-    setupComplete = Boolean(safeState.setupComplete);
+    setupComplete = true;
   }
 
   function syncSetupInputs() {
@@ -1936,18 +1936,14 @@ async function main() {
   }
 
   function ensureSetupState() {
-    salaryCard.hidden = setupComplete;
-    trackerMainLayout.hidden = !setupComplete;
-    trackerGrid.classList.toggle("is-ready", setupComplete);
-    if (!setupComplete) {
-      syncSetupInputs();
-    }
-    if (setupComplete) {
-      renderCalendar();
-      updateChart();
-      updateRecentTransactions();
-      renderAccountsModal();
-    }
+    setupComplete = true;
+    salaryCard.hidden = true;
+    trackerMainLayout.hidden = false;
+    trackerGrid.classList.add("is-ready");
+    renderCalendar();
+    updateChart();
+    updateRecentTransactions();
+    renderAccountsModal();
   }
 
   searchInput.addEventListener("input", () => renderCalendar());
@@ -2149,7 +2145,7 @@ async function main() {
     accounts = [];
     budget = null;
     weeklyBudget = null;
-    setupComplete = false;
+    setupComplete = true;
 
     saveAccounts([]);
     saveBudget(null);

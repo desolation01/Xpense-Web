@@ -25,28 +25,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  background-image:
-    linear-gradient(var(--color-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
-  background-size: var(--space-32) var(--space-32);
-  mask-image: radial-gradient(ellipse 70% 50% at 50% 20%, rgba(0, 0, 0, 0.6), transparent 80%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 50% at 50% 20%, rgba(0, 0, 0, 0.6), transparent 80%);
-}
-
+body::before,
 body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 76% 74%, var(--color-glow), transparent 24%),
-    radial-gradient(circle at 18% 62%, var(--color-glow-secondary), transparent 22%);
+  content: none;
 }
 
 a {

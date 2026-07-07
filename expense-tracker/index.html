@@ -20,9 +20,9 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet" media="print" onload="this.media='all'" />
   <link rel="preload" href="/css/tracker.css?v=2.4.5" as="style" />
-  <link rel="preload" href="/js/tracker.js?v=1.4.35" as="script" />
+  <link rel="preload" href="/js/tracker.js?v=1.4.36" as="script" />
   <link rel="stylesheet" href="/css/tokens.css" />
-  <link rel="stylesheet" href="/css/styles.css?v=2.1.1" />
+  <link rel="stylesheet" href="/css/styles.css?v=2.1.2" />
   <link rel="stylesheet" href="/css/tracker.css?v=2.4.5" />
   <link rel="stylesheet" href="/css/pwa.css" />
   <style>
@@ -144,22 +144,11 @@
     }
 
     html[data-theme="light"] body.vault-locked {
-      background:
-        radial-gradient(circle at top left, rgba(186, 230, 253, 0.34), transparent 34%),
-        radial-gradient(circle at 80% 18%, rgba(187, 247, 208, 0.28), transparent 30%),
-        linear-gradient(180deg, #edf4fb 0%, #e6eef8 48%, #eef5ec 100%);
+      background: var(--color-background);
     }
 
     html[data-theme="light"] body.vault-locked::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background-image: linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
-      background-size: 36px 36px;
-      mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.72), transparent 88%);
-      -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.72), transparent 88%);
+      content: none;
     }
 
     html[data-theme="light"] .vault-modal .tracker-modal-backdrop {
@@ -1514,7 +1503,7 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
   <script src="/js/localDataStore.js?v=1.0.10" defer></script>
   <script src="/js/privateVault.js?v=1.0.31" defer></script>
-  <script src="/js/tracker.js?v=1.4.35" defer></script>
+  <script src="/js/tracker.js?v=1.4.36" defer></script>
   <script src="/js/pwa.js?v=1.2.2" defer></script>
   <script>
     // 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?Theme Toggle 闂傚倸鍊搁崐椋庣矆娓氣偓瀹曨垶宕稿Δ鈧崒銊︾節婵犲倻澧曠痪鎯ь煼閺岀喖宕滆鐢盯鏌ｉ幘鍐叉殻闁哄本绋栫粻娑㈠箼閸愨敩锔界箾?
