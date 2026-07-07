@@ -6,6 +6,9 @@
   const PBKDF2_ITERATIONS = 250000;
   const SESSION_CACHE_PREFIX = "xpense_vault_session_v1";
   const SESSION_CACHE_TTL_MS = 30 * 60 * 1000;
+  // Temporary login bypass: set this back to false to require the vault passphrase again.
+  const PASSPHRASE_AUTH_PAUSED = true;
+  const PAUSED_AUTH_PASSPHRASE = "__xpense_passphrase_auth_paused__";
 
   let cachedPassphrase = null;
   let activeVaultRequest = null;
@@ -324,6 +327,11 @@
       throw new Error("This browser does not support the encryption features required by Xpense.");
     }
 
+    if (PASSPHRASE_AUTH_PAUSED) {
+      persistSessionPassphrase(PAUSED_AUTH_PASSPHRASE);
+      return true;
+    }
+
     const restoredPassphrase = restoreSessionPassphrase();
 
     if ((cachedPassphrase || restoredPassphrase) && !forcePrompt) {
@@ -390,7 +398,10 @@
     encryptJSON,
     decryptJSON,
     hasPassphrase() {
-      return Boolean(restoreSessionPassphrase() || cachedPassphrase);
+      return PASSPHRASE_AUTH_PAUSED || Boolean(restoreSessionPassphrase() || cachedPassphrase);
+    },
+    isPassphraseAuthPaused() {
+      return PASSPHRASE_AUTH_PAUSED;
     },
   };
 })();

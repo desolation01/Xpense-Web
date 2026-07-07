@@ -307,6 +307,8 @@ async function main() {
   }
 
   async function persistPrivateState() {
+    if (window.privateVault.isPassphraseAuthPaused?.()) return;
+
     const safeState = {
       accounts: normalizeAccounts(accounts),
       budget: Number.isFinite(budget) ? budget : null,
@@ -329,6 +331,10 @@ async function main() {
     const existingEnvelope = await getStoredValue(getPrivateStateStorageKey());
 
     if (existingEnvelope && typeof existingEnvelope === "object" && existingEnvelope.ciphertext) {
+      if (window.privateVault.isPassphraseAuthPaused?.()) {
+        return null;
+      }
+
       const unlocked = await window.privateVault.unlock({
         existingEnvelope,
         createIfMissing: false,
@@ -900,6 +906,10 @@ async function main() {
 
       const data = await response.json();
       if (data.encryptedState) {
+        if (window.privateVault.isPassphraseAuthPaused?.()) {
+          return { skippedEncryptedState: true };
+        }
+
         const unlocked = await window.privateVault.unlock({
           existingEnvelope: data.encryptedState,
           createIfMissing: false,
@@ -936,6 +946,7 @@ async function main() {
   const triggerSync = async () => {
     const authHeaders = getAuthHeaders();
     if (!authHeaders.Authorization) return;
+    if (window.privateVault.isPassphraseAuthPaused?.()) return;
 
     try {
       const token = await fetchCsrfToken();
